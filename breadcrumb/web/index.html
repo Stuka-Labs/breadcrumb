@@ -31,6 +31,38 @@
 
   <title>breadcrumb</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+
+  <script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_w0Oa_tWr1xvJLJ0eEI-SHfh-sbG7IsU",
+      authDomain: "breadcrumb-bd857.firebaseapp.com",
+      projectId: "breadcrumb-bd857",
+      storageBucket: "breadcrumb-bd857.firebasestorage.app",
+      messagingSenderId: "892664263258",
+      appId: "1:892664263258:web:dff04dd52b3f0fd11bde63",
+      measurementId: "G-1EYR7DFV5Z"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const analytics = firebase.analytics();
+    const auth = firebase.auth();
+    const firestore = firebase.firestore();
+
+    window.firebase = {
+      app: firebase.app(),
+      analytics,
+      auth,
+      firestore
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
