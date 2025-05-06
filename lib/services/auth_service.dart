@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -26,36 +27,15 @@ class AuthService {
     required String username,
     required String role,
   }) async {
-    // First verify admin
-    final adminUser = await _auth.signInWithEmailAndPassword(
-      email: 'fed@gmail.com',
-      password: 'admin123', // TODO: Move to secure storage
-    );
-
-    if (adminUser.user?.email != 'fed@gmail.com') {
-      throw FirebaseAuthException(
-        code: 'permission-denied',
-        message: 'Only admin can create users',
-      );
-    }
-
-    // Create the new user
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    // Store user data in Firestore
-    await _firestore.collection('users').doc(userCredential.user!.uid).set({
-      'username': username,
+    final functions = FirebaseFunctions.instance;
+    final callable = functions.httpsCallable('createUserWithRole');
+    await callable.call(<String, dynamic>{
       'email': email,
+      'password': password,
       'role': role,
-      'createdBy': 'fed@gmail.com',
-      'createdAt': FieldValue.serverTimestamp(),
     });
-
-    // Sign out admin
-    await _auth.signOut();
+    // Optionally, you can store username in Firestore here if needed
+    // await _firestore.collection('users').doc(result.data['uid']).update({'username': username});
   }
 
   // Sign out

@@ -21,6 +21,7 @@ dependencies:
   firebase_analytics_web: ^0.5.10+11
   http: ^1.1.0
   flutter_secure_storage: ^9.0.0
+  cloud_functions: ^5.5.0
 
 dev_dependencies:
   flutter_test:

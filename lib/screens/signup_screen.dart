@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -28,6 +29,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email != 'fed@gmail.com') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You must be signed in as the admin to create users.')),
+        );
+      }
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {

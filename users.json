@@ -1,0 +1,12 @@
+{"users": [
+{
+  "localId": "2x2vUr1QcZc0R9ofPeJzSbQJLx83",
+  "email": "fed@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "k67XtS9xBOEsYQk1pSbYnv57Hl//lY0wsMqlkElhheaawHwliu30iNBHzrEhukDztG1Kx5SytHBniM0jOXXXzA==",
+  "salt": "FPtNvAWiSzjRiQ==",
+  "lastSignedInAt": "1746550341576",
+  "createdAt": "1746039259789",
+  "disabled": false,
+  "providerUserInfo": []
+}]}
