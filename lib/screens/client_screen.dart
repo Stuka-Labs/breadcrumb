@@ -24,110 +24,122 @@ class ClientScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Welcome to Client Portal',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+            _sectionHeader('Quick Add'),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _quickAddButton(context, 'New Sale Order', Icons.add_shopping_cart),
+                _quickAddButton(context, 'New Purchase Order', Icons.add_business),
+              ],
             ),
-            const SizedBox(height: 20),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildActionButton(
-                          context,
-                          'New Order',
-                          Icons.add_shopping_cart,
-                          () {
-                            // TODO: Implement new order functionality
-                          },
-                        ),
-                        _buildActionButton(
-                          context,
-                          'View Orders',
-                          Icons.shopping_bag,
-                          () {
-                            // TODO: Implement view orders functionality
-                          },
-                        ),
-                        _buildActionButton(
-                          context,
-                          'Track Delivery',
-                          Icons.local_shipping,
-                          () {
-                            // TODO: Implement track delivery functionality
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Recent Orders',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 0, // TODO: Implement recent orders list
-                itemBuilder: (context, index) {
-                  return const Card(
-                    child: ListTile(
-                      title: Text('Order #123'),
-                      subtitle: Text('Status: In Progress'),
-                      trailing: Icon(Icons.arrow_forward_ios),
-                    ),
-                  );
-                },
-              ),
-            ),
+            const SizedBox(height: 32),
+            _sectionHeader('Warehouse'),
+            _featureGrid([
+              _featureTile('Products', Icons.inventory),
+              _featureTile('Purchase Orders', Icons.shopping_bag),
+              _featureTile('Sale Orders', Icons.sell),
+            ]),
+            const SizedBox(height: 32),
+            _sectionHeader('Reports'),
+            _featureGrid([
+              _featureTile('Purchase Order Report', Icons.assignment),
+              _featureTile('Sale Order Report', Icons.assignment_turned_in),
+              _featureTile('Stock Movement', Icons.swap_horiz),
+              _featureTile('Warning Expiry Stock', Icons.warning),
+              _featureTile('Documents', Icons.description),
+              _featureTile('Users', Icons.people),
+              _featureTile('Settings', Icons.settings_suggest),
+            ]),
+            const SizedBox(height: 32),
+            _sectionHeader('Parse File'),
+            _featureGrid([
+              _featureTile('Parse File', Icons.insert_drive_file),
+            ]),
+            const SizedBox(height: 32),
+            _sectionHeader('Contacts'),
+            _featureGrid([
+              _featureTile('Users', Icons.person),
+              _featureTile('Customers', Icons.people_outline),
+              _featureTile('Suppliers', Icons.local_shipping),
+              _featureTile('Drivers', Icons.drive_eta),
+              _featureTile('API Clients', Icons.api),
+            ]),
+            const SizedBox(height: 32),
+            _sectionHeader('More'),
+            _featureGrid([
+              _featureTile('Documents', Icons.description),
+              _featureTile('Users', Icons.people),
+              _featureTile('Invoices', Icons.receipt_long),
+              _featureTile('Self Managed Integration', Icons.integration_instructions),
+              _featureTile('Settings', Icons.settings_suggest),
+            ]),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    VoidCallback onPressed,
-  ) {
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _quickAddButton(BuildContext context, String label, IconData icon) {
     return ElevatedButton.icon(
-      onPressed: onPressed,
+      onPressed: () {},
       icon: Icon(icon),
       label: Text(label),
       style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
+  Widget _featureGrid(List<Widget> tiles) {
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.2,
+      children: tiles,
+    );
+  }
+
+  Widget _featureTile(String label, IconData icon) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 36, color: Colors.deepPurple),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
     );

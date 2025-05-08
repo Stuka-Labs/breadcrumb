@@ -8,6 +8,8 @@ import 'screens/signin_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/packer_screen.dart';
 import 'services/auth_service.dart';
+import 'views/user_management_view.dart';
+import 'constants/routes.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -53,6 +55,7 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => const AdminScreen(),
         '/packer': (context) => const PackerScreen(),
         '/client': (context) => const ClientScreen(),
+        userManagementRoute: (context) => UserManagementView(),
       },
     );
   }

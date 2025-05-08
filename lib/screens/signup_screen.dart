@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key});
+  final bool isAdminCreating;
+  const SignUpScreen({super.key, this.isAdminCreating = false});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -15,9 +16,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _usernameController = TextEditingController();
-  String _selectedRole = 'packer';
+  String _selectedRole = 'client';
   bool _isLoading = false;
-  final _authService = AuthService();
 
   @override
   void dispose() {
@@ -29,35 +29,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.email != 'fed@gmail.com') {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You must be signed in as the admin to create users.')),
-        );
-      }
-      return;
-    }
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        await _authService.createUser(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          username: _usernameController.text.trim(),
-          role: _selectedRole,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created successfully!')),
+        if (widget.isAdminCreating) {
+          // Admin creates user with email/password and selected role
+          final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
           );
-          // Clear the form
-          _formKey.currentState!.reset();
-          _emailController.clear();
-          _passwordController.clear();
-          _confirmPasswordController.clear();
-          _usernameController.clear();
+          await FirebaseFirestore.instance.collection('user').doc(userCredential.user!.uid).set({
+            'email': _emailController.text.trim(),
+            'username': _usernameController.text.trim(),
+            'role': {
+              'admin': _selectedRole == 'admin',
+              'client': _selectedRole == 'client',
+              'packer': _selectedRole == 'packer',
+            },
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          // Delete the new user's session so admin stays signed in
+          await FirebaseAuth.instance.currentUser?.delete();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User created successfully!')),
+          );
+          if (mounted) Navigator.pop(context);
+        } else {
+          // Normal user self-signup
+          final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+          // Ask for role
+          if (mounted) {
+            final selectedRole = await showDialog<String>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('What\'s your role?'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, 'admin'),
+                      child: const Text('Admin'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, 'packer'),
+                      child: const Text('Packer'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, 'client'),
+                      child: const Text('Client'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+            // Assign selected role in Firestore
+            if (selectedRole != null) {
+              await FirebaseFirestore.instance.collection('user').doc(userCredential.user!.uid).set({
+                'email': _emailController.text.trim(),
+                'username': _usernameController.text.trim(),
+                'role': {
+                  'admin': selectedRole == 'admin',
+                  'client': selectedRole == 'client',
+                  'packer': selectedRole == 'packer',
+                },
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Account created successfully!')),
+            );
+            // Clear the form
+            _formKey.currentState!.reset();
+            _emailController.clear();
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            _usernameController.clear();
+            // Navigate to sign-in screen
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/signin');
+            }
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -77,7 +131,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin - Create User'),
+        title: Text(widget.isAdminCreating ? 'Admin - Create User' : 'Create Account'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -153,23 +207,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedRole,
-                decoration: const InputDecoration(
-                  labelText: 'Role',
-                  border: OutlineInputBorder(),
+              if (widget.isAdminCreating) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                    DropdownMenuItem(value: 'packer', child: Text('Packer')),
+                    DropdownMenuItem(value: 'client', child: Text('Client')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedRole = value);
+                    }
+                  },
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'packer', child: Text('Packer')),
-                  DropdownMenuItem(value: 'client', child: Text('Client')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedRole = value);
-                  }
-                },
-              ),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -178,7 +235,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   onPressed: _isLoading ? null : _signUp,
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Create User'),
+                      : Text(widget.isAdminCreating ? 'Create User' : 'Create Account'),
                 ),
               ),
             ],
