@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants/theme.dart';
 
 class ShopConnectDialog extends StatelessWidget {
   final VoidCallback? onConnected;
   const ShopConnectDialog({super.key, this.onConnected});
+
+  static const String shopifyInstallUrl = 'https://breadcrumb-bd857.web.app/api/auth/shopify'; // Replace with your actual install URL
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +20,8 @@ class ShopConnectDialog extends StatelessWidget {
           children: [
             const Text('Connect Your Shop', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
+            _shopifyButton(context),
+            const SizedBox(height: 12),
             _shopButton(context, 'Etsy', Icons.shopping_bag, kPastelOrange),
             const SizedBox(height: 12),
             _shopButton(context, 'Amazon', Icons.store, Colors.amber),
@@ -34,6 +39,32 @@ class ShopConnectDialog extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _shopifyButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.shopping_bag, color: Colors.white),
+        label: const Text('Shopify'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: () async {
+          final url = Uri.parse(shopifyInstallUrl);
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not launch Shopify install URL')),
+            );
+          }
+        },
       ),
     );
   }

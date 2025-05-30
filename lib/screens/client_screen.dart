@@ -4,6 +4,7 @@ import '../constants/theme.dart';
 import '../widgets/shop_connect_dialog.dart';
 import '../services/ai_insights_service.dart';
 import '../services/shopify_service.dart';
+import 'dart:html' as html;
 
 class ClientScreen extends StatefulWidget {
   const ClientScreen({super.key});
@@ -26,14 +27,34 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     fetchAIInsight();
-    // TODO: Check backend if user has connected any shops and fetch data if so
-    // For now, hasConnectedShop = false; (simulate no connection)
+    // Detect OAuth callback
+    final uri = Uri.parse(html.window.location.href);
+    if (uri.queryParameters['connected'] == 'success') {
+      setState(() {
+        hasConnectedShop = true;
+      });
+      fetchShopData();
+    }
   }
 
   Future<void> fetchAIInsight() async {
     setState(() => loadingInsight = true);
     aiInsight = await AIInsightsService.getClientPortalInsight(selectedCompetitor);
     setState(() => loadingInsight = false);
+  }
+
+  Future<void> fetchShopData() async {
+    setState(() => shopData = null);
+    try {
+      final orders = await ShopifyService.fetchOrders();
+      setState(() {
+        shopData = {'orders': orders};
+      });
+    } catch (e) {
+      setState(() {
+        shopData = {'error': e.toString()};
+      });
+    }
   }
 
   void onShopConnected() async {
@@ -114,31 +135,27 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
   }
 
   Widget _buildDashboardWithData() {
-    // TODO: Replace with widgets that use real shopData
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.analytics, color: kPastelOrange, size: 64),
-            const SizedBox(height: 24),
-            const Text(
-              'Your shop data will appear here!',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Once you connect a shop, your sales, orders, and shipping analytics will be shown here in real time.',
-              style: TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            OrdersList(),
-          ],
-        ),
-      ),
+    if (shopData == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (shopData != null && shopData!['error'] != null) {
+      return Center(child: Text('Error: \\${shopData!['error']}'));
+    }
+    final orders = shopData!['orders'] as List<dynamic>?;
+    return ListView.builder(
+      padding: const EdgeInsets.all(32.0),
+      itemCount: orders?.length ?? 0,
+      itemBuilder: (context, index) {
+        final order = orders![index]['node'];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            title: Text('Order #${order['name']}'),
+            subtitle: Text('Customer: ${order['customer']?['firstName'] ?? ''} ${order['customer']?['lastName'] ?? ''}\nTotal: ${order['totalPriceSet']?['shopMoney']?['amount'] ?? ''} ${order['totalPriceSet']?['shopMoney']?['currencyCode'] ?? ''}'),
+            trailing: Text(order['createdAt'] ?? ''),
+          ),
+        );
+      },
     );
   }
 
