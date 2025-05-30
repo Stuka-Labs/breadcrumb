@@ -7,7 +7,6 @@ class PackerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Packer Portal'),
@@ -40,40 +39,40 @@ class PackerScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             _sectionHeader('Warehouse'),
-            _featureGrid([
-              _featureTile('Stock Takes (PV)', Icons.fact_check),
-              _featureTile('Wave Picks (PV)', Icons.waves),
-              _featureTile('Warehouse Locations (PV)', Icons.location_on),
-              _featureTile('Scan Allocate (PV)', Icons.qr_code_scanner),
-              _featureTile('Scan Order (PV)', Icons.qr_code),
+            _featureGrid(context, [
+              _featureTile(context, 'Stock Takes (PV)', Icons.fact_check),
+              _featureTile(context, 'Wave Picks (PV)', Icons.waves),
+              _featureTile(context, 'Warehouse Locations (PV)', Icons.location_on),
+              _featureTile(context, 'Scan Allocate (PV)', Icons.qr_code_scanner),
+              _featureTile(context, 'Scan Order (PV)', Icons.qr_code),
             ]),
             const SizedBox(height: 32),
             _sectionHeader('Customer (Packer only)'),
-            _featureGrid([
-              _featureTile('Customer', Icons.people),
+            _featureGrid(context, [
+              _featureTile(context, 'Customer', Icons.people),
             ]),
             const SizedBox(height: 32),
             _sectionHeader('Reports'),
-            _featureGrid([
-              _featureTile('Stock Movement (PV)', Icons.swap_horiz),
-              _featureTile('Customer Stock (PV)', Icons.storage),
-              _featureTile('Print Log (PV)', Icons.print),
-              _featureTile('Bulk Pallet Label Printing (PV)', Icons.label),
+            _featureGrid(context, [
+              _featureTile(context, 'Stock Movement (PV) (CV)', Icons.swap_horiz),
+              _featureTile(context, 'Customer Stock (PV)', Icons.storage),
+              _featureTile(context, 'Print Log (PV)', Icons.print),
+              _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
             ]),
             const SizedBox(height: 32),
             _sectionHeader('Contacts'),
-            _featureGrid([
-              _featureTile('Users', Icons.person),
-              _featureTile('Customer', Icons.people_outline),
-              _featureTile('Suppliers', Icons.local_shipping),
-              _featureTile('Drivers', Icons.drive_eta),
-              _featureTile('API Clients', Icons.api),
+            _featureGrid(context, [
+              _featureTile(context, 'Users', Icons.person),
+              _featureTile(context, 'Customer', Icons.people_outline),
+              _featureTile(context, 'Suppliers', Icons.local_shipping),
+              _featureTile(context, 'Drivers', Icons.drive_eta),
+              _featureTile(context, 'API Clients', Icons.api),
             ]),
             const SizedBox(height: 32),
             _sectionHeader('More'),
-            _featureGrid([
-              _featureTile('Print Log (PV)', Icons.print),
-              _featureTile('Bulk Pallet Label Printing (PV)', Icons.label),
+            _featureGrid(context, [
+              _featureTile(context, 'Print Log (PV)', Icons.print),
+              _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
             ]),
           ],
         ),
@@ -92,8 +91,19 @@ class PackerScreen extends StatelessWidget {
   }
 
   Widget _quickAddButton(BuildContext context, String label, IconData icon) {
+    String? route;
+    switch (label) {
+      case 'New Sale Order':
+        route = '/new-sale-order';
+        break;
+      case 'New Purchase Order':
+        route = '/new-purchase-order';
+        break;
+      default:
+        route = null;
+    }
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: route != null ? () => Navigator.pushNamed(context, route!) : null,
       icon: Icon(icon),
       label: Text(label),
       style: ElevatedButton.styleFrom(
@@ -103,7 +113,7 @@ class PackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _featureGrid(List<Widget> tiles) {
+  Widget _featureGrid(BuildContext context, List<Widget> tiles) {
     return GridView.count(
       crossAxisCount: 4,
       shrinkWrap: true,
@@ -115,12 +125,59 @@ class PackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _featureTile(String label, IconData icon) {
+  Widget _featureTile(BuildContext context, String label, IconData icon) {
+    String? route;
+    switch (label) {
+      case 'Stock Takes (PV)':
+        route = '/stock-takes';
+        break;
+      case 'Wave Picks (PV)':
+        route = '/wave-picks';
+        break;
+      case 'Warehouse Locations (PV)':
+        route = '/warehouse-locations';
+        break;
+      case 'Scan Allocate (PV)':
+        route = '/scan-allocate';
+        break;
+      case 'Scan Order (PV)':
+        route = '/scan-order';
+        break;
+      case 'Stock Movement (PV) (CV)':
+        route = '/stock-movement-report';
+        break;
+      case 'Customer Stock (PV)':
+        route = '/customer-stock-report';
+        break;
+      case 'Print Log (PV)':
+        route = '/print-log';
+        break;
+      case 'Bulk Pallet Label Printing (PV)':
+        route = '/bulk-pallet-label-printing';
+        break;
+      case 'Users':
+        route = '/users';
+        break;
+      case 'Customer':
+        route = '/customer';
+        break;
+      case 'Suppliers':
+        route = '/suppliers';
+        break;
+      case 'Drivers':
+        route = '/drivers';
+        break;
+      case 'API Clients':
+        route = '/api-clients';
+        break;
+      default:
+        route = null;
+    }
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () {},
+        onTap: route != null ? () => Navigator.pushNamed(context, route!) : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
