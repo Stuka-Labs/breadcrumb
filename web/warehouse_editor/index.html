@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <title>Breadcrumb 3D Warehouse Editor</title>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; }
+    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(255,255,255,0.9); padding: 12px 16px; border-radius: 10px; box-shadow: 0 2px 12px #0001; display: flex; align-items: center; }
+    #logo { height: 32px; margin-right: 12px; }
+    .toolbar-btn { margin: 0 4px; padding: 6px 10px; border: none; border-radius: 5px; background: #ffb74d; color: #222; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .toolbar-btn.selected, .toolbar-btn:hover { background: #ffa726; }
+    #layer-nav { margin-left: 16px; }
+    #layer-nav button { margin: 0 2px; }
+    #props { position: absolute; top: 60px; left: 10px; z-index: 10; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px #0002; padding: 12px; min-width: 220px; display: none; }
+    #props input, #props select { width: 100%; margin-bottom: 8px; }
+    #props h4 { margin-top: 0; }
+    #selection-rect { position: absolute; border: 2px dashed #ffa726; background: rgba(255,183,77,0.1); pointer-events: none; display: none; z-index: 100; }
+    .handle { position: absolute; width: 16px; height: 16px; background: #ffa726; border-radius: 50%; border: 2px solid #fff; cursor: pointer; z-index: 200; }
+    .handle-rotate { background: #90caf9; border: 2px solid #fff; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <img id="logo" src="../assets/assets/Breadcrumb.png" alt="Breadcrumb Logo" />
+    <button class="toolbar-btn" id="add-zone">Zone</button>
+    <button class="toolbar-btn" id="add-aisle">Aisle</button>
+    <button class="toolbar-btn" id="add-shelf">Shelf</button>
+    <button class="toolbar-btn" id="add-container">Container</button>
+    <button class="toolbar-btn" id="select">Select</button>
+    <button class="toolbar-btn" id="delete">Delete</button>
+    <button class="toolbar-btn" id="undo">Undo</button>
+    <button class="toolbar-btn" id="redo">Redo</button>
+    <button class="toolbar-btn" id="snap">Snap</button>
+    <span id="layer-nav">
+      Layer: <span id="layer-num">1</span>
+      <button class="toolbar-btn" id="layer-up">▲</button>
+      <button class="toolbar-btn" id="layer-down">▼</button>
+    </span>
+    <button class="toolbar-btn" id="export">Export</button>
+    <button class="toolbar-btn" id="import">Import</button>
+    <button class="toolbar-btn" id="reset-camera">Reset Camera</button>
+    <button class="toolbar-btn" id="reset-layout">Reset Layout</button>
+  </div>
+  <div id="error-message" style="display:none;position:absolute;top:50px;left:50%;transform:translateX(-50%);background:#ff5252;color:#fff;padding:16px 32px;border-radius:8px;z-index:1000;font-size:1.2em;font-weight:bold;box-shadow:0 2px 12px #0004;">3D Engine failed to load. Check console for errors.</div>
+  <div id="debug-overlay" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 12px;border-radius:6px;font-size:0.95em;z-index:100;display:none;"></div>
+  <div id="props">
+    <h4 id="props-title">Edit Properties</h4>
+    <label>Type <select id="prop-type">
+      <option value="zone">Zone</option>
+      <option value="aisle">Aisle</option>
+      <option value="shelf">Shelf</option>
+      <option value="container">Container</option>
+    </select></label>
+    <label>Color <input id="prop-color" type="color" /></label>
+    <button class="toolbar-btn" id="prop-apply">Apply</button>
+    <button class="toolbar-btn" id="prop-close">Close</button>
+    <div id="single-props">
+      <label>Name <input id="prop-name" type="text" /></label>
+      <label>Width <input id="prop-width" type="number" min="0.1" step="0.1" /></label>
+      <label>Height <input id="prop-height" type="number" min="0.1" step="0.1" /></label>
+      <label>Depth <input id="prop-depth" type="number" min="0.1" step="0.1" /></label>
+    </div>
+  </div>
+  <div id="selection-rect"></div>
+  <div id="resize-handle" class="handle" style="display:none;"></div>
+  <div id="rotate-handle" class="handle handle-rotate" style="display:none;"></div>
+  <script type="module">
+    console.log('Script loaded');
+    import * as THREE from './three.module.js';
+    import { OrbitControls } from './OrbitControls.js';
+    console.log('Three.js and OrbitControls imported');
+    try {
+    // --- 3D Scene Setup ---
+    const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x44474a); // medium grey
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(10, 15, 20);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,0,0);
+    controls.update();
+      console.log('Scene, camera, renderer, controls created');
+
+    // Lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+    dir.position.set(10,20,10);
+    scene.add(dir);
+
+    // Add grid helper (for orientation)
+      const grid = new THREE.GridHelper(20, 20, 0x888888, 0xaaaaaa);
+    scene.add(grid);
+
+    // Add a subtle ground plane
+    const groundGeo = new THREE.PlaneGeometry(20, 20);
+      const groundMat = new THREE.MeshPhongMaterial({ color: 0x44474a, depthWrite: false });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    scene.add(ground);
+
+    // --- State ---
+    let objects = [];
+    let selected = [];
+    let layers = [0]; // y positions for each layer
+    let currentLayer = 0;
+    let undoStack = [], redoStack = [];
+    let snapToGrid = false;
+
+    // --- Object Factory ---
+    function createObject(type, opts={}) {
+      let geo, mat, color, name, width, height, depth;
+      name = opts.name || type.charAt(0).toUpperCase() + type.slice(1);
+        // All blocks blue by default
+      switch(type) {
+        case 'zone':
+            width = opts.width || 6; height = opts.height || 0.5; depth = opts.depth || 6; color = opts.color || '#1976d2'; // blue
+          break;
+        case 'aisle':
+            width = opts.width || 1; height = opts.height || 0.5; depth = opts.depth || 6; color = opts.color || '#1976d2';
+          break;
+        case 'shelf':
+            width = opts.width || 4; height = opts.height || 0.5; depth = opts.depth || 1; color = opts.color || '#1976d2';
+          break;
+        case 'container':
+            width = opts.width || 1; height = opts.height || 1; depth = opts.depth || 1; color = opts.color || '#1976d2';
+          break;
+        default:
+            width = 1; height = 1; depth = 1; color = '#1976d2';
+      }
+      geo = new THREE.BoxGeometry(width, height, depth);
+      mat = new THREE.MeshLambertMaterial({color: color});
+      const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+          typeof opts.x === 'number' ? opts.x : 0,
+          (layers[currentLayer]||0) + height/2,
+          typeof opts.z === 'number' ? opts.z : 0
+        );
+      mesh.userData = { type, name, width, height, depth, color, id: Date.now() + Math.random(), rotation: opts.rotation || 0 };
+      mesh.rotation.y = opts.rotation || 0;
+      return mesh;
+    }
+
+    // --- Toolbar Actions ---
+    function addObject(type) {
+        console.log('addObject called with type:', type);
+      const mesh = createObject(type);
+      scene.add(mesh);
+      objects.push(mesh);
+      selectObject(mesh, false);
+      pushUndo();
+    }
+    function selectObject(obj, addToSelection) {
+      if (!addToSelection) {
+        selected.forEach(o => o.material.emissive && (o.material.emissive.set(0x000000)));
+        selected = [];
+      }
+      if (obj && !selected.includes(obj)) {
+        selected.push(obj);
+        obj.material.emissive && obj.material.emissive.set(0x2222ff);
+      }
+      showProps();
+      updateHandles();
+    }
+    function deselectAll() {
+      selected.forEach(o => o.material.emissive && (o.material.emissive.set(0x000000)));
+      selected = [];
+      hideProps();
+      updateHandles();
+    }
+    function deleteSelected() {
+      selected.forEach(obj => {
+        scene.remove(obj);
+        objects = objects.filter(o => o !== obj);
+      });
+      deselectAll();
+      pushUndo();
+    }
+    function pushUndo() {
+      undoStack.push(exportData());
+      redoStack = [];
+    }
+    function undo() {
+      if (undoStack.length > 1) {
+        redoStack.push(undoStack.pop());
+        importData(undoStack[undoStack.length-1]);
+      }
+    }
+    function redo() {
+      if (redoStack.length > 0) {
+        const state = redoStack.pop();
+        undoStack.push(state);
+        importData(state);
+      }
+    }
+    function snapAll() {
+      objects.forEach(obj => {
+        obj.position.x = Math.round(obj.position.x);
+        obj.position.z = Math.round(obj.position.z);
+      });
+    }
+    function changeLayer(delta) {
+      currentLayer = Math.max(0, currentLayer + delta);
+      document.getElementById('layer-num').textContent = (currentLayer+1);
+      objects.forEach(obj => {
+        obj.visible = Math.abs(obj.position.y - (layers[currentLayer]||0) - obj.userData.height/2) < 0.2;
+      });
+      deselectAll();
+    }
+    function addLayerNav() {
+      layers.push((layers[layers.length-1]||0) + 2);
+      currentLayer = layers.length-1;
+      document.getElementById('layer-num').textContent = (currentLayer+1);
+      changeLayer(0);
+    }
+
+    // --- Properties Panel ---
+    function showProps() {
+      const props = document.getElementById('props');
+      const singleProps = document.getElementById('single-props');
+      if (selected.length === 0) {
+        props.style.display = 'none';
+        return;
+      }
+      props.style.display = 'block';
+      document.getElementById('props-title').textContent = selected.length > 1 ? `Edit ${selected.length} Objects` : 'Edit Properties';
+      // If multi-select, only show batch-editable fields
+      if (selected.length > 1) {
+        singleProps.style.display = 'none';
+        // If all types are the same, show that type, else blank
+        const allTypes = selected.map(o => o.userData.type);
+        const allColors = selected.map(o => o.userData.color);
+        document.getElementById('prop-type').value = allTypes.every(t => t === allTypes[0]) ? allTypes[0] : '';
+        document.getElementById('prop-color').value = allColors.every(c => c === allColors[0]) ? allColors[0] : '#cccccc';
+      } else {
+        singleProps.style.display = 'block';
+        const obj = selected[0];
+        document.getElementById('prop-name').value = obj.userData.name;
+        document.getElementById('prop-type').value = obj.userData.type;
+        document.getElementById('prop-width').value = obj.userData.width;
+        document.getElementById('prop-height').value = obj.userData.height;
+        document.getElementById('prop-depth').value = obj.userData.depth;
+        document.getElementById('prop-color').value = rgbToHex(obj.material.color.getHex());
+      }
+    }
+    function hideProps() {
+      document.getElementById('props').style.display = 'none';
+    }
+    function applyProps() {
+      if (selected.length === 0) return;
+      const type = document.getElementById('prop-type').value;
+      const color = document.getElementById('prop-color').value;
+      if (selected.length > 1) {
+        selected.forEach(obj => {
+          if (type) obj.userData.type = type;
+          if (color) {
+            obj.userData.color = color;
+            obj.material.color.set(color);
+          }
+        });
+      } else {
+        const obj = selected[0];
+        obj.userData.name = document.getElementById('prop-name').value;
+        obj.userData.type = type;
+        obj.userData.width = parseFloat(document.getElementById('prop-width').value);
+        obj.userData.height = parseFloat(document.getElementById('prop-height').value);
+        obj.userData.depth = parseFloat(document.getElementById('prop-depth').value);
+        obj.userData.color = color;
+        // Replace geometry and color
+        obj.geometry.dispose();
+        obj.geometry = new THREE.BoxGeometry(obj.userData.width, obj.userData.height, obj.userData.depth);
+        obj.material.color.set(obj.userData.color);
+      }
+      pushUndo();
+      updateHandles();
+    }
+    function rgbToHex(rgb) {
+      return '#' + rgb.toString(16).padStart(6, '0');
+    }
+
+    // --- Mouse/Drag/Select ---
+    let dragObj = null, dragOffset = new THREE.Vector3();
+    let isDraggingRect = false, rectStart = null;
+    const selectionRect = document.getElementById('selection-rect');
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('pointerup', onPointerUp);
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('mousedown', onMouseDownRect);
+    renderer.domElement.addEventListener('mousemove', onMouseMoveRect);
+    renderer.domElement.addEventListener('mouseup', onMouseUpRect);
+    function getIntersects(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      return raycaster.intersectObjects(objects.filter(o => o.visible));
+    }
+    function onPointerDown(event) {
+      if (event.shiftKey) return; // handled by rect
+      const intersects = getIntersects(event);
+      if (intersects.length > 0) {
+        dragObj = intersects[0].object;
+        selectObject(dragObj, event.shiftKey);
+        controls.enabled = false;
+        dragOffset.copy(dragObj.position).sub(getPointerWorld(event));
+      } else {
+        deselectAll();
+      }
+    }
+    function onPointerUp(event) {
+      dragObj = null;
+      controls.enabled = true;
+    }
+    function onPointerMove(event) {
+      if (dragObj) {
+        const pos = getPointerWorld(event).add(dragOffset);
+        dragObj.position.x = snapToGrid ? Math.round(pos.x) : pos.x;
+        dragObj.position.z = snapToGrid ? Math.round(pos.z) : pos.z;
+        updateHandles();
+      }
+    }
+    function getPointerWorld(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const plane = new THREE.Plane(new THREE.Vector3(0,1,0), layers[currentLayer]||0);
+      const intersect = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, intersect);
+      return intersect;
+    }
+    // --- Rectangle Selection ---
+    function onMouseDownRect(e) {
+      if (!e.shiftKey) return;
+      isDraggingRect = true;
+      rectStart = { x: e.clientX, y: e.clientY };
+      selectionRect.style.left = `${rectStart.x}px`;
+      selectionRect.style.top = `${rectStart.y}px`;
+      selectionRect.style.width = '0px';
+      selectionRect.style.height = '0px';
+      selectionRect.style.display = 'block';
+    }
+    function onMouseMoveRect(e) {
+      if (!isDraggingRect) return;
+      const x = Math.min(rectStart.x, e.clientX);
+      const y = Math.min(rectStart.y, e.clientY);
+      const w = Math.abs(rectStart.x - e.clientX);
+      const h = Math.abs(rectStart.y - e.clientY);
+      selectionRect.style.left = `${x}px`;
+      selectionRect.style.top = `${y}px`;
+      selectionRect.style.width = `${w}px`;
+      selectionRect.style.height = `${h}px`;
+    }
+    function onMouseUpRect(e) {
+      if (!isDraggingRect) return;
+      isDraggingRect = false;
+      selectionRect.style.display = 'none';
+      // Find objects in rectangle
+      const rect = renderer.domElement.getBoundingClientRect();
+      const x1 = Math.min(rectStart.x, e.clientX), x2 = Math.max(rectStart.x, e.clientX);
+      const y1 = Math.min(rectStart.y, e.clientY), y2 = Math.max(rectStart.y, e.clientY);
+      selected.forEach(o => o.material.emissive && (o.material.emissive.set(0x000000)));
+      selected = [];
+      objects.forEach(obj => {
+        const pos = obj.position.clone().project(camera);
+        const sx = ((pos.x + 1) / 2) * rect.width + rect.left;
+        const sy = ((-pos.y + 1) / 2) * rect.height + rect.top;
+        if (sx >= x1 && sx <= x2 && sy >= y1 && sy <= y2 && obj.visible) {
+          selected.push(obj);
+          obj.material.emissive && obj.material.emissive.set(0x2222ff);
+        }
+      });
+      showProps();
+      updateHandles();
+    }
+
+    // --- Resize/Rotate Handles ---
+    const resizeHandle = document.getElementById('resize-handle');
+    const rotateHandle = document.getElementById('rotate-handle');
+    let resizing = false, rotating = false, resizeStart = null, rotateStart = null;
+    function updateHandles() {
+      if (selected.length === 1) {
+        // Project the object's top-front-right corner to screen
+        const obj = selected[0];
+        const box = new THREE.Box3().setFromObject(obj);
+        const corner = new THREE.Vector3(box.max.x, box.max.y, box.max.z);
+        corner.project(camera);
+        const rect = renderer.domElement.getBoundingClientRect();
+        const sx = ((corner.x + 1) / 2) * rect.width + rect.left;
+        const sy = ((-corner.y + 1) / 2) * rect.height + rect.top;
+        resizeHandle.style.left = `${sx-8}px`;
+        resizeHandle.style.top = `${sy-8}px`;
+        resizeHandle.style.display = 'block';
+        // Rotation handle: above the object
+        const center = obj.position.clone();
+        center.y += obj.userData.height/2 + 0.5;
+        center.project(camera);
+        const rx = ((center.x + 1) / 2) * rect.width + rect.left;
+        const ry = ((-center.y + 1) / 2) * rect.height + rect.top;
+        rotateHandle.style.left = `${rx-8}px`;
+        rotateHandle.style.top = `${ry-8}px`;
+        rotateHandle.style.display = 'block';
+      } else if (selected.length > 1) {
+        // Hide handles for multi-select (could show group handles in future)
+        resizeHandle.style.display = 'none';
+        rotateHandle.style.display = 'none';
+      } else {
+        resizeHandle.style.display = 'none';
+        rotateHandle.style.display = 'none';
+      }
+    }
+    resizeHandle.onmousedown = function(e) {
+      resizing = true;
+      resizeStart = { x: e.clientX, y: e.clientY, obj: selected[0], width: selected[0].userData.width, depth: selected[0].userData.depth };
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('mousemove', function(e) {
+      if (resizing && selected.length === 1) {
+        const dx = (e.clientX - resizeStart.x) * 0.05;
+        const dz = (e.clientY - resizeStart.y) * 0.05;
+        const obj = selected[0];
+        obj.userData.width = Math.max(0.1, resizeStart.width + dx);
+        obj.userData.depth = Math.max(0.1, resizeStart.depth + dz);
+        obj.geometry.dispose();
+        obj.geometry = new THREE.BoxGeometry(obj.userData.width, obj.userData.height, obj.userData.depth);
+        updateHandles();
+      }
+    });
+    document.addEventListener('mouseup', function(e) {
+      if (resizing) {
+        resizing = false;
+        pushUndo();
+      }
+    });
+    rotateHandle.onmousedown = function(e) {
+      rotating = true;
+      rotateStart = { x: e.clientX, obj: selected[0], startRot: selected[0].rotation.y };
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('mousemove', function(e) {
+      if (rotating && selected.length === 1) {
+        const dTheta = (e.clientX - rotateStart.x) * 0.01;
+        const obj = selected[0];
+        obj.rotation.y = rotateStart.startRot + dTheta;
+        obj.userData.rotation = obj.rotation.y;
+        updateHandles();
+      }
+    });
+    document.addEventListener('mouseup', function(e) {
+      if (rotating) {
+        rotating = false;
+        pushUndo();
+      }
+    });
+
+    // --- Export/Import ---
+    function exportData() {
+      return JSON.stringify(objects.map(obj => ({
+        type: obj.userData.type,
+        name: obj.userData.name,
+        id: obj.userData.id,
+        pos: obj.position.toArray(),
+        width: obj.userData.width,
+        height: obj.userData.height,
+        depth: obj.userData.depth,
+        color: obj.userData.color,
+        rotation: obj.userData.rotation || 0,
+        layer: layers.findIndex(l => Math.abs(obj.position.y - l - obj.userData.height/2) < 0.2),
+      })));
+    }
+    function importData(json) {
+      // Remove old
+      objects.forEach(obj => scene.remove(obj));
+      objects = [];
+      const arr = typeof json === 'string' ? JSON.parse(json) : json;
+      arr.forEach(item => {
+        const mesh = createObject(item.type, item);
+        mesh.position.fromArray(item.pos);
+        mesh.userData = { ...item };
+        mesh.material.color.set(item.color);
+        mesh.rotation.y = item.rotation || 0;
+        scene.add(mesh);
+        objects.push(mesh);
+      });
+      deselectAll();
+    }
+    document.getElementById('export').onclick = () => {
+        const data = exportData();
+        localStorage.setItem('warehouseLayout', data);
+        window.parent.postMessage({ type: 'export', data: JSON.parse(data) }, '*');
+      alert('Layout exported to Flutter!');
+    };
+    document.getElementById('import').onclick = () => {
+      window.parent.postMessage({ type: 'import-request' }, '*');
+    };
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'import') {
+        importData(event.data.data);
+      }
+    });
+
+    // --- Toolbar Event Bindings ---
+      document.getElementById('add-zone').onclick = () => { console.log('Zone button pressed'); addObject('zone'); };
+      document.getElementById('add-aisle').onclick = () => { console.log('Aisle button pressed'); addObject('aisle'); };
+      document.getElementById('add-shelf').onclick = () => { console.log('Shelf button pressed'); addObject('shelf'); };
+      document.getElementById('add-container').onclick = () => { console.log('Container button pressed'); addObject('container'); };
+    document.getElementById('select').onclick = () => deselectAll();
+    document.getElementById('delete').onclick = () => deleteSelected();
+    document.getElementById('undo').onclick = () => undo();
+    document.getElementById('redo').onclick = () => redo();
+    document.getElementById('snap').onclick = () => { snapToGrid = !snapToGrid; snapAll(); };
+    document.getElementById('layer-up').onclick = () => addLayerNav();
+    document.getElementById('layer-down').onclick = () => { if (currentLayer > 0) { currentLayer--; document.getElementById('layer-num').textContent = (currentLayer+1); changeLayer(0); } };
+    document.getElementById('prop-apply').onclick = () => { applyProps(); };
+    document.getElementById('prop-close').onclick = () => { hideProps(); };
+
+      // --- Reset Camera and Layout ---
+      document.getElementById('reset-camera').onclick = () => {
+        camera.position.set(10, 15, 20);
+        controls.target.set(0, 0, 0);
+        controls.update();
+      };
+      document.getElementById('reset-layout').onclick = () => {
+        localStorage.removeItem('warehouseLayout');
+        location.reload();
+      };
+
+      // --- Debug Overlay ---
+      const debugOverlay = document.getElementById('debug-overlay');
+      debugOverlay.style.display = 'block';
+      function updateDebug() {
+        debugOverlay.textContent = `Camera: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}) | Objects: ${objects.length}`;
+      }
+
+    // --- Animation Loop ---
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+      updateHandles();
+        updateDebug();
+    }
+    animate();
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateHandles();
+    });
+
+    // --- Initial Undo State ---
+      // Load last saved layout from localStorage (or backend in future)
+      const saved = localStorage.getItem('warehouseLayout');
+      if (saved) {
+        console.log('Importing saved layout');
+        importData(saved);
+      } else {
+        console.log('No saved layout, adding initial zone');
+        addObject('zone');
+    pushUndo();
+      }
+    } catch (e) {
+      document.getElementById('error-message').style.display = 'block';
+      document.getElementById('error-message').textContent = '3D Engine failed: ' + e;
+      console.error('3D Engine failed to load:', e);
+    }
+  </script>
+</body>
+</html> 

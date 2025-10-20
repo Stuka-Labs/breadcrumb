@@ -21,7 +21,7 @@ class SaleOrdersScreen extends StatelessWidget {
               final data = docs[i].data() as Map<String, dynamic>;
               return ListTile(
                 title: Text('Order #\\${docs[i].id}'),
-                subtitle: Text('Status: \\${data['status'] ?? ''} | Customer: \\${data['customerId'] ?? ''}'),
+                subtitle: Text('Status: \\${data['status'] ?? ''} | Customer: \\${data['customerId'] ?? ''}\nProduct: \\${data['productId'] ?? ''} | Bin: \\${data['productBin'] ?? ''} | Qty: \\${data['quantity'] ?? ''}'),
                 trailing: Text(data['type'] ?? ''),
               );
             },
@@ -35,9 +35,15 @@ class SaleOrdersScreen extends StatelessWidget {
     );
   }
 
-  void _showAddSaleOrderDialog(BuildContext context) {
+  void _showAddSaleOrderDialog(BuildContext context) async {
     final _formKey = GlobalKey<FormState>();
     String customerId = '', status = 'pending';
+    List<Map<String, dynamic>> products = [];
+    String? selectedProductId;
+    int quantity = 1;
+    // Fetch products with bins
+    final snapshot = await FirebaseFirestore.instance.collection('products').get();
+    products = snapshot.docs.map((d) => d.data() as Map<String, dynamic>).where((p) => p['locationId'] != null && p['locationId'].toString().isNotEmpty).toList();
     showDialog(
       context: context,
       builder: (context) {
@@ -52,6 +58,22 @@ class SaleOrdersScreen extends StatelessWidget {
                   decoration: const InputDecoration(labelText: 'Customer ID'),
                   validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                   onSaved: (v) => customerId = v ?? '',
+                ),
+                DropdownButtonFormField<String>(
+                  value: selectedProductId,
+                  items: products.map<DropdownMenuItem<String>>((p) => DropdownMenuItem<String>(
+                    value: (p['sku'] ?? '').toString(),
+                    child: Text('${p['name']} (Bin: ${p['locationId']})'),
+                  )).toList(),
+                  onChanged: (v) => selectedProductId = v,
+                  validator: (v) => v == null || v.isEmpty ? 'Select a product' : null,
+                  decoration: const InputDecoration(labelText: 'Product'),
+                ),
+                TextFormField(
+                  decoration: const InputDecoration(labelText: 'Quantity'),
+                  keyboardType: TextInputType.number,
+                  initialValue: '1',
+                  onChanged: (v) => quantity = int.tryParse(v) ?? 1,
                 ),
                 DropdownButtonFormField<String>(
                   value: status,
@@ -77,10 +99,14 @@ class SaleOrdersScreen extends StatelessWidget {
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   _formKey.currentState!.save();
+                  final selectedProduct = products.firstWhere((p) => p['sku'] == selectedProductId);
                   await FirebaseFirestore.instance.collection('orders').add({
                     'type': 'sale',
                     'status': status,
                     'customerId': customerId,
+                    'productId': selectedProductId,
+                    'productBin': selectedProduct['locationId'],
+                    'quantity': quantity,
                     'createdAt': FieldValue.serverTimestamp(),
                     'updatedAt': FieldValue.serverTimestamp(),
                   });

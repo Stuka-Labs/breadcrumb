@@ -5,6 +5,10 @@ import '../widgets/shop_connect_dialog.dart';
 import '../services/ai_insights_service.dart';
 import '../services/shopify_service.dart';
 import 'dart:html' as html;
+import '../services/auth_service.dart';
+import 'new_sale_order_screen.dart';
+import 'new_purchase_order_screen.dart';
+import 'products_screen.dart';
 
 class ClientScreen extends StatefulWidget {
   const ClientScreen({super.key});
@@ -70,9 +74,27 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Client Portal'),
+        title: Row(
+          children: [
+            Image.asset('assets/Breadcrumb.png', height: 36),
+            const SizedBox(width: 12),
+            const Text('Client Portal'),
+          ],
+        ),
         elevation: 0,
         backgroundColor: kBackgroundColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign Out',
+            onPressed: () async {
+              await AuthService().signOut();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/signin');
+              }
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: kPastelOrange,
@@ -84,16 +106,21 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
           ],
         ),
       ),
-      body: hasConnectedShop
-          ? _buildDashboardWithData()
-          : _buildConnectShopPrompt(),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 700),
+          child: hasConnectedShop
+              ? _buildDashboardWithData()
+              : _buildConnectShopPrompt(),
+        ),
+      ),
     );
   }
 
   Widget _buildConnectShopPrompt() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 500),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -142,20 +169,62 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
       return Center(child: Text('Error: \\${shopData!['error']}'));
     }
     final orders = shopData!['orders'] as List<dynamic>?;
-    return ListView.builder(
-      padding: const EdgeInsets.all(32.0),
-      itemCount: orders?.length ?? 0,
-      itemBuilder: (context, index) {
-        final order = orders![index]['node'];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            title: Text('Order #${order['name']}'),
-            subtitle: Text('Customer: ${order['customer']?['firstName'] ?? ''} ${order['customer']?['lastName'] ?? ''}\nTotal: ${order['totalPriceSet']?['shopMoney']?['amount'] ?? ''} ${order['totalPriceSet']?['shopMoney']?['currencyCode'] ?? ''}'),
-            trailing: Text(order['createdAt'] ?? ''),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Quick Add menu for clients
+        Row(
+          children: [
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add_shopping_cart),
+              label: const Text('New Sale Order'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+              ),
+              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add_business),
+              label: const Text('New Purchase Order'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+              ),
+              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add_box),
+              label: const Text('New Product'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProductsScreen()),
+              ),
+              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(32.0),
+            itemCount: orders?.length ?? 0,
+            itemBuilder: (context, index) {
+              final order = orders![index]['node'];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: ListTile(
+                  title: Text('Order #${order['name']}'),
+                  subtitle: Text('Customer: ${order['customer']?['firstName'] ?? ''} ${order['customer']?['lastName'] ?? ''}\nTotal: ${order['totalPriceSet']?['shopMoney']?['amount'] ?? ''} ${order['totalPriceSet']?['shopMoney']?['currencyCode'] ?? ''}'),
+                  trailing: Text(order['createdAt'] ?? ''),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

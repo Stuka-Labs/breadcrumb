@@ -356,4 +356,43 @@ The following Cloud Functions should be implemented:
 7. Use proper security rules
 8. Implement proper logging
 9. Use proper error handling
-10. Implement proper monitoring 
+10. Implement proper monitoring
+
+## Recommended Firestore Composite Indexes
+
+Add these composite indexes to your Firestore for optimal query performance and to avoid runtime errors:
+
+1. **orders**
+   - Fields: `type` ASC, `status` ASC
+   - Fields: `status` ASC, `createdAt` DESC
+   - Fields: `customerId` ASC, `status` ASC
+   - Fields: `createdAt` DESC
+
+2. **products**
+   - Fields: `warehouseId` ASC, `status` ASC
+   - Fields: `customerId` ASC, `status` ASC
+   - Fields: `expiryDate` ASC
+   - Fields: `createdAt` DESC
+
+3. **locations**
+   - Fields: `warehouseId` ASC, `status` ASC
+   - Fields: `createdAt` DESC
+
+4. **stockTakes**
+   - Fields: `warehouseId` ASC, `status` ASC
+   - Fields: `createdBy` ASC, `status` ASC
+   - Fields: `createdAt` DESC
+
+5. **wavePicks**
+   - Fields: `warehouseId` ASC, `status` ASC
+   - Fields: `packerId` ASC, `status` ASC
+   - Fields: `createdAt` DESC
+
+6. **reports**
+   - Fields: `type` ASC, `generatedAt` DESC
+   - Fields: `warehouseId` ASC, `generatedAt` DESC
+
+7. **Any collection with queries on `status` and `createdAt`**
+   - Fields: `status` ASC, `createdAt` DESC
+
+To deploy these indexes, create a `firestore.indexes.json` file and run `firebase deploy --only firestore:indexes`. 

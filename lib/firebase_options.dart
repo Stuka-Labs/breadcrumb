@@ -46,7 +46,19 @@ class DefaultFirebaseOptions {
     messagingSenderId: '892664263258',
     appId: '1:892664263258:web:dff04dd52b3f0fd11bde63',
     authDomain: 'breadcrumb-bd857.firebaseapp.com',
-    storageBucket: 'breadcrumb-bd857.firebasestorage.app',
+    storageBucket: 'breadcrumb-bd857.appspot.com',
     measurementId: 'G-1EYR7DFV5Z',
+    databaseURL: 'https://breadcrumb-bd857-default-rtdb.firebaseio.com',
+  );
+
+  // Local emulator configuration for debugging
+  static const FirebaseOptions localEmulator = FirebaseOptions(
+    apiKey: 'demo-api-key',
+    projectId: 'demo-project',
+    messagingSenderId: '123456789',
+    appId: '1:123456789:web:demo',
+    authDomain: 'localhost:9099',
+    storageBucket: 'localhost:9199',
+    measurementId: 'demo-measurement-id',
   );
 } 

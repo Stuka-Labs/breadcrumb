@@ -43,9 +43,9 @@ exports.createUserWithRole = functions.https.onCall(async (data, context) => {
     functions.logger.info('Creating user', { email, roleObj });
     const userRecord = await admin.auth().createUser({ email, password });
     // No custom claims set
-    await admin.firestore().collection('user').doc(userRecord.uid).set({
+    await admin.firestore().collection('users').doc(userRecord.uid).set({
       email,
-      role: roleObj,
+      role: role,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -84,15 +84,78 @@ exports.createUserWithRoleHttp = functions.https.onRequest(async (req, res) => {
       packer: role === 'packer',
     };
     const userRecord = await admin.auth().createUser({ email, password });
-    await admin.firestore().collection('user').doc(userRecord.uid).set({
+    await admin.firestore().collection('users').doc(userRecord.uid).set({
       email,
-      role: roleObj,
+      role: role,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return res.status(200).json({ success: true, uid: userRecord.uid });
   } catch (error) {
     functions.logger.error('Create User Error (HTTP):', error, { stack: error.stack });
     return res.status(500).json({ error: error.message || 'Unknown error', stack: error.stack });
+  }
+});
+
+exports.migrateUsers = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('Starting user migration...');
+    
+    // Get all users from the 'user' collection (singular)
+    const userSnapshot = await admin.firestore().collection('user').get();
+    console.log(`Found ${userSnapshot.size} users in 'user' collection`);
+    
+    if (userSnapshot.empty) {
+      return { message: 'No users to migrate', count: 0 };
+    }
+    
+    let migratedCount = 0;
+    
+    // Migrate each user
+    for (const doc of userSnapshot.docs) {
+      const userData = doc.data();
+      console.log(`Migrating user: ${userData.email}`);
+      
+      // Convert role object to simple string
+      let role = 'client'; // default role
+      if (userData.role) {
+        if (typeof userData.role === 'string') {
+          role = userData.role;
+        } else if (userData.role.admin) {
+          role = 'admin';
+        } else if (userData.role.client) {
+          role = 'client';
+        } else if (userData.role.packer) {
+          role = 'packer';
+        }
+      }
+      
+      // Create new user document in 'users' collection
+      await admin.firestore().collection('users').doc(doc.id).set({
+        email: userData.email,
+        role: role,
+        username: userData.username || '',
+        createdAt: userData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'active',
+        warehouseId: userData.warehouseId || '',
+        customerId: userData.customerId || '',
+        lastLogin: userData.lastLogin || admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      migratedCount++;
+      console.log(`✓ Migrated ${userData.email} with role: ${role}`);
+    }
+    
+    console.log(`Migration completed successfully! Migrated ${migratedCount} users.`);
+    return { 
+      message: 'Migration completed successfully!', 
+      count: migratedCount,
+      details: `Migrated ${migratedCount} users from 'user' to 'users' collection`
+    };
+    
+  } catch (error) {
+    console.error('Migration failed:', error);
+    throw new functions.https.HttpsError('internal', error.message || 'Migration failed');
   }
 });
 

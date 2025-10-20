@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'dart:async';
+import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
+import 'services/simple_firebase_debugger.dart';
 import 'screens/signup_screen.dart';
 import 'screens/signin_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/packer_screen.dart';
+import 'screens/packer_orders_screen.dart';
 import 'services/auth_service.dart';
 import 'views/user_management_view.dart';
 import 'constants/routes.dart';
@@ -59,29 +64,104 @@ import 'screens/scan_order_screen.dart';
 import 'constants/theme.dart';
 import 'screens/client_screen.dart';
 
-void main() {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-  runApp(const MyApp());
-    } catch (e, stack) {
-      debugPrint('Error initializing Firebase: $e');
-      debugPrint('Stack trace: $stack');
-      runApp(MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Error initializing app: $e'),
-          ),
-        ),
-      ));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    // Only start Firebase debugging AFTER successful initialization
+    if (kDebugMode) {
+      developer.log('Firebase initialized successfully', name: 'Firebase');
+      SimpleFirebaseDebugger.startMonitoring();
     }
-  }, (error, stack) {
-    debugPrint('Error in main: $error');
+    
+    runApp(const MyApp());
+  } catch (e, stack) {
+    developer.log('Error initializing Firebase: $e', name: 'Firebase', error: e, stackTrace: stack);
+    debugPrint('Error initializing Firebase: $e');
     debugPrint('Stack trace: $stack');
-  });
+    
+    // Show the app even if Firebase fails - this prevents white screen
+    runApp(const MyApp());
+  }
+}
+
+// Safe sign-in screen that works even if Firebase fails
+class SafeSignInScreen extends StatelessWidget {
+  const SafeSignInScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset('assets/Breadcrumb.png', height: 120),
+            const SizedBox(height: 32),
+            const Text(
+              'Welcome to Breadcrumb WMS',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Warehouse Management System',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                // Try to navigate to sign in, but handle errors gracefully
+                try {
+                  Navigator.pushNamed(context, '/signin');
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Navigation error: $e')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sign In', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Try to navigate to sign up, but handle errors gracefully
+                try {
+                  Navigator.pushNamed(context, '/signup');
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Navigation error: $e')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sign Up', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Firebase Status: Initializing...',
+              style: TextStyle(fontSize: 14, color: Colors.orange),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -93,12 +173,13 @@ class MyApp extends StatelessWidget {
       title: 'Breadcrumb',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
-      home: const AuthWrapper(),
+      home: const SafeSignInScreen(),
       routes: {
         '/signup': (context) => const SignUpScreen(),
         '/signin': (context) => const SignInScreen(),
         '/admin': (context) => const AdminScreen(),
         '/packer': (context) => const PackerScreen(),
+        '/packer-orders': (context) => const PackerOrdersScreen(),
         '/client': (context) => const ClientScreen(),
         userManagementRoute: (context) => UserManagementView(),
         '/new-sale-order': (context) => const NewSaleOrderScreen(),
@@ -152,8 +233,58 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class SplashScreen extends StatefulWidget {
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset('assets/Breadcrumb.png', height: 120),
+            const SizedBox(height: 32),
+            const Text('Welcome to Breadcrumb', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            CircularProgressIndicator(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
+
+  Future<String?> _getUserRoleWithMigration(AuthService authService, String uid) async {
+    var role = await authService.getUserRole(uid);
+    if (role == null) {
+      // Try to migrate user from old collection
+      try {
+        await authService.migrateUserToNewCollection(uid);
+        role = await authService.getUserRole(uid);
+      } catch (e) {
+        debugPrint('Migration failed: $e');
+      }
+    }
+    return role;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +314,7 @@ class AuthWrapper extends StatelessWidget {
             return const AdminScreen();
           } else {
             return FutureBuilder<String?>(
-              future: authService.getUserRole(user.uid),
+              future: _getUserRoleWithMigration(authService, user.uid),
               builder: (context, roleSnapshot) {
                 if (roleSnapshot.connectionState == ConnectionState.waiting) {
                   return const Scaffold(

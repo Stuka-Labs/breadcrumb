@@ -1,15 +1,59 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'signup_screen.dart';
+import 'onboarding_screen.dart';
+import 'warehouse_3d_screen.dart';
+import 'admin_clients_screen.dart';
+import 'new_sale_order_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'products_screen.dart';
+import 'purchase_orders_screen.dart';
+import 'sale_orders_screen.dart';
+import 'stock_takes_screen.dart';
+import 'wave_picks_screen.dart';
+import 'warehouse_locations_screen.dart';
+import 'scan_allocate_screen.dart';
+import 'scan_order_screen.dart';
+import 'customer_screen.dart';
+import 'new_purchase_order_screen.dart';
+import '../services/benny_data_seeder.dart';
 
-class AdminScreen extends StatelessWidget {
+class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  String selectedClient = 'All Clients';
+  final List<String> clients = ['All Clients', 'Client A', 'Client B']; // TODO: Replace with real client list
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Panel'),
+        title: Row(
+          children: [
+            Image.asset('assets/Breadcrumb.png', height: 36),
+            const SizedBox(width: 12),
+            const Text('Admin Panel'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -22,324 +66,474 @@ class AdminScreen extends StatelessWidget {
             },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'Dashboard'),
+            Tab(text: 'Quick Add'),
+            Tab(text: 'Warehouse'),
+            Tab(text: 'Customer'),
+            Tab(text: 'Reports & More'),
+          ],
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Quick Add Section
-            _sectionHeader('Quick Add'),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Dashboard Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _quickAddButton(context, 'New Sale Order', Icons.add_shopping_cart),
-                _quickAddButton(context, 'New Purchase Order', Icons.add_business),
-                _quickAddButton(
-                  context,
-                  'Create New Account',
-                  Icons.person_add,
-                  onPressed: () async {
-                    await AuthService().signOut();
-                    if (context.mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignUpScreen(),
-                        ),
-                      );
-                    }
+                Row(
+                  children: [
+                    const Text('Sale Orders (Daily)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(width: 16),
+                    DropdownButton<String>(
+                      value: selectedClient,
+                      items: clients.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (v) => setState(() => selectedClient = v ?? 'All Clients'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 220,
+                  width: double.infinity,
+                  child: _SaleOrdersLineChart(selectedClient: selectedClient),
+                ),
+                const SizedBox(height: 32),
+                const Text('Sale Orders: Fulfilled vs Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 220,
+                  width: double.infinity,
+                  child: _SaleOrdersPieChart(selectedClient: selectedClient),
+                ),
+              ],
+            ),
+          ),
+          // Quick Add Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: const Text('New Sale Order'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add_business),
+                  label: const Text('New Purchase Order'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Create New Account'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.group_add),
+                  label: const Text('Onboard New Client'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.data_usage),
+                  label: const Text('Seed Benny Data'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _seedBennyData(),
+                ),
+              ],
+            ),
+          ),
+          // Warehouse Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.inventory),
+                  title: const Text('Products (CV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.shopping_bag),
+                  title: const Text('Purchase Orders (CV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PurchaseOrdersScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.sell),
+                  title: const Text('Sale Orders (CV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SaleOrdersScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.fact_check),
+                  title: const Text('Stock Takes (PV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StockTakesScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.waves),
+                  title: const Text('Wave Picks (PV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const WavePicksScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.location_on),
+                  title: const Text('Warehouse Locations (PV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const WarehouseLocationsScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.qr_code_scanner),
+                  title: const Text('Scan Allocate (PV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ScanAllocateScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.qr_code),
+                  title: const Text('Scan Order (PV)'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ScanOrderScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.view_in_ar),
+                  title: const Text('3D Warehouse Editor'),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const Warehouse3DScreen()),
+                    );
                   },
                 ),
               ],
             ),
-            const SizedBox(height: 32),
-            // Warehouse Section
-            _sectionHeader('Warehouse'),
-            _featureGrid(context, [
-              _featureTile(context, 'Products (CV)', Icons.inventory),
-              _featureTile(context, 'Purchase Orders (CV)', Icons.shopping_bag),
-              _featureTile(context, 'Sale Orders (CV)', Icons.sell),
-              _featureTile(context, 'Stock Takes (PV)', Icons.fact_check),
-              _featureTile(context, 'Wave Picks (PV)', Icons.waves),
-              _featureTile(context, 'Warehouse Locations (PV)', Icons.location_on),
-              _featureTile(context, 'Scan Allocate (PV)', Icons.qr_code_scanner),
-              _featureTile(context, 'Scan Order (PV)', Icons.qr_code),
-            ]),
-            const SizedBox(height: 32),
-            // Customer (Packer only)
-            _sectionHeader('Customer (Packer only)'),
-            _featureGrid(context, [
-              _featureTile(context, 'Customer', Icons.people),
-            ]),
-            const SizedBox(height: 32),
-            // Reports Section
-            _sectionHeader('Reports'),
-            _featureGrid(context, [
-              _featureTile(context, 'Discrepancy Reports', Icons.report_problem),
-              _featureTile(context, 'Purchase Order (CV)', Icons.assignment),
-              _featureTile(context, 'Sale Order (CV)', Icons.assignment_turned_in),
-              _featureTile(context, 'Stock Movement (PV) (CV)', Icons.swap_horiz),
-              _featureTile(context, 'Customer Stock (PV)', Icons.storage),
-              _featureTile(context, 'Bulk Export Purchase', Icons.file_upload),
-              _featureTile(context, 'Warning Expiry Stock Report (CV)', Icons.warning),
-              _featureTile(context, 'Bulk Export Sale', Icons.file_upload_outlined),
-              _featureTile(context, 'Stats', Icons.bar_chart),
-              _featureTile(context, 'Automation', Icons.settings_remote),
-              _featureTile(context, 'Usda e', Icons.eco),
-              _featureTile(context, 'Bulk Export', Icons.cloud_upload),
-              _featureTile(context, 'API Client Usage', Icons.api),
-            ]),
-            const SizedBox(height: 32),
-            // Parse File
-            _sectionHeader('Parse File (CV)'),
-            _featureGrid(context, [
-              _featureTile(context, 'Parse File', Icons.insert_drive_file),
-            ]),
-            const SizedBox(height: 32),
-            // Contacts
-            _sectionHeader('Contacts'),
-            _featureGrid(context, [
-              _featureTile(context, 'Users', Icons.person),
-              _featureTile(context, 'Customer', Icons.people_outline),
-              _featureTile(context, 'Suppliers', Icons.local_shipping),
-              _featureTile(context, 'Drivers', Icons.drive_eta),
-              _featureTile(context, 'API Clients', Icons.api),
-            ]),
-            const SizedBox(height: 32),
-            // More
-            _sectionHeader('More'),
-            _featureGrid(context, [
-              _featureTile(context, 'Addresses', Icons.home),
-              _featureTile(context, 'Product Settings', Icons.settings),
-              _featureTile(context, 'Documents (CV)', Icons.description),
-              _featureTile(context, 'Users (CV)', Icons.people),
-              _featureTile(context, 'Cash on Delivery', Icons.attach_money),
-              _featureTile(context, 'Invoices (CV)', Icons.receipt_long),
-              _featureTile(context, 'Bills', Icons.receipt),
-              _featureTile(context, 'Rate Cards', Icons.credit_card),
-              _featureTile(context, 'Warehouse Settings', Icons.settings_applications),
-              _featureTile(context, 'Organisation Settings', Icons.business),
-              _featureTile(context, 'Parse a File', Icons.file_present),
-              _featureTile(context, 'Self Managed Integration (CV)', Icons.integration_instructions),
-              _featureTile(context, 'Bolt Log', Icons.bolt),
-              _featureTile(context, 'Settings (CV)', Icons.settings_suggest),
-              _featureTile(context, 'Import Log', Icons.import_export),
-              _featureTile(context, 'Print Log (PV)', Icons.print),
-              _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
-            ]),
-          ],
-        ),
+          ),
+          // Customer Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: ListTile(
+              leading: const Icon(Icons.people),
+              title: const Text('Customer'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CustomerScreen()),
+              ),
+            ),
+          ),
+          // Reports & More Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.receipt_long),
+                  title: const Text('Invoices (CV)'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bar_chart),
+                  title: const Text('Stock Report'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StockReportScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.receipt),
+                  title: const Text('Bills'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.credit_card),
+                  title: const Text('Rate Cards'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_applications),
+                  title: const Text('Warehouse Settings'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.business),
+                  title: const Text('Organisation Settings'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people),
+                  title: const Text('Clients Overview'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminClientsScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.home),
+                  title: const Text('Addresses'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Product Settings'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.description),
+                  title: const Text('Documents (CV)'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.attach_money),
+                  title: const Text('Cash on Delivery'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.import_export),
+                  title: const Text('Import Log'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.print),
+                  title: const Text('Print Log (PV)'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.label),
+                  title: const Text('Bulk Pallet Label Printing (PV)'),
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+  // Seed Benny data for demonstration
+  Future<void> _seedBennyData() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('Seeding Benny data...'),
+              ],
+            ),
+          );
+        },
+      );
 
-  Widget _quickAddButton(BuildContext context, String label, IconData icon, {VoidCallback? onPressed}) {
-    String? route;
-    switch (label) {
-      case 'New Sale Order':
-        route = '/new-sale-order';
-        break;
-      case 'New Purchase Order':
-        route = '/new-purchase-order';
-        break;
-      default:
-        route = null;
+      // Seed the data
+      await BennyDataSeeder.seedAllData();
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Benny data seeded successfully! Check all tabs to see the data.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
+        );
+
+        // Refresh the UI
+        setState(() {});
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error seeding data: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
     }
-    return ElevatedButton.icon(
-      onPressed: onPressed ?? (route != null ? () => Navigator.pushNamed(context, route!) : null),
-      icon: Icon(icon),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-      ),
-    );
   }
+}
 
-  Widget _featureGrid(BuildContext context, List<Widget> tiles) {
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1.2,
-      children: tiles,
-    );
-  }
+class _SaleOrdersLineChart extends StatelessWidget {
+  final String selectedClient;
+  const _SaleOrdersLineChart({required this.selectedClient});
 
-  Widget _featureTile(BuildContext context, String label, IconData icon) {
-    String? route;
-    switch (label) {
-      case 'Products (CV)':
-        route = '/products';
-        break;
-      case 'Purchase Orders (CV)':
-        route = '/purchase-orders';
-        break;
-      case 'Sale Orders (CV)':
-        route = '/sale-orders';
-        break;
-      case 'Stock Takes (PV)':
-        route = '/stock-takes';
-        break;
-      case 'Wave Picks (PV)':
-        route = '/wave-picks';
-        break;
-      case 'Warehouse Locations (PV)':
-        route = '/warehouse-locations';
-        break;
-      case 'Scan Allocate (PV)':
-        route = '/scan-allocate';
-        break;
-      case 'Scan Order (PV)':
-        route = '/scan-order';
-        break;
-      case 'Customer':
-        route = '/customer';
-        break;
-      case 'Discrepancy Reports':
-        route = '/discrepancy-reports';
-        break;
-      case 'Purchase Order (CV)':
-        route = '/purchase-order-report';
-        break;
-      case 'Sale Order (CV)':
-        route = '/sale-order-report';
-        break;
-      case 'Stock Movement (PV) (CV)':
-        route = '/stock-movement-report';
-        break;
-      case 'Customer Stock (PV)':
-        route = '/customer-stock-report';
-        break;
-      case 'Bulk Export Purchase':
-        route = '/bulk-export-purchase';
-        break;
-      case 'Warning Expiry Stock Report (CV)':
-        route = '/warning-expiry-stock-report';
-        break;
-      case 'Bulk Export Sale':
-        route = '/bulk-export-sale';
-        break;
-      case 'Stats':
-        route = '/stats';
-        break;
-      case 'Automation':
-        route = '/automation';
-        break;
-      case 'Usda e':
-        route = '/usda-e';
-        break;
-      case 'Bulk Export':
-        route = '/bulk-export';
-        break;
-      case 'API Client Usage':
-        route = '/api-client-usage';
-        break;
-      case 'Parse File':
-        route = '/parse-file';
-        break;
-      case 'Users':
-        route = '/users';
-        break;
-      case 'Suppliers':
-        route = '/suppliers';
-        break;
-      case 'Drivers':
-        route = '/drivers';
-        break;
-      case 'API Clients':
-        route = '/api-clients';
-        break;
-      case 'Addresses':
-        route = '/addresses';
-        break;
-      case 'Product Settings':
-        route = '/product-settings';
-        break;
-      case 'Documents (CV)':
-        route = '/documents';
-        break;
-      case 'Users (CV)':
-        route = '/users-cv';
-        break;
-      case 'Cash on Delivery':
-        route = '/cash-on-delivery';
-        break;
-      case 'Invoices (CV)':
-        route = '/invoices';
-        break;
-      case 'Bills':
-        route = '/bills';
-        break;
-      case 'Rate Cards':
-        route = '/rate-cards';
-        break;
-      case 'Warehouse Settings':
-        route = '/warehouse-settings';
-        break;
-      case 'Organisation Settings':
-        route = '/organisation-settings';
-        break;
-      case 'Parse a File':
-        route = '/parse-a-file';
-        break;
-      case 'Self Managed Integration (CV)':
-        route = '/self-managed-integration';
-        break;
-      case 'Bolt Log':
-        route = '/bolt-log';
-        break;
-      case 'Settings (CV)':
-        route = '/settings-cv';
-        break;
-      case 'Import Log':
-        route = '/import-log';
-        break;
-      case 'Print Log (PV)':
-        route = '/print-log';
-        break;
-      case 'Bulk Pallet Label Printing (PV)':
-        route = '/bulk-pallet-label-printing';
-        break;
-      default:
-        route = null;
-    }
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: route != null ? () => Navigator.pushNamed(context, route!) : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 36, color: Colors.deepPurple),
-              const SizedBox(height: 12),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance.collection('saleOrders').get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+        // Filter by client if not 'All Clients'
+        final filtered = selectedClient == 'All Clients'
+            ? docs
+            : docs.where((d) => d['clientId'] == selectedClient).toList();
+        // Group by day
+        final Map<String, int> dailyCounts = {};
+        for (final doc in filtered) {
+          final ts = doc['createdAt'];
+          DateTime date;
+          if (ts is Timestamp) {
+            date = ts.toDate();
+          } else if (ts is DateTime) {
+            date = ts;
+          } else {
+            continue;
+          }
+          final day = DateTime(date.year, date.month, date.day);
+          final key = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+          dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
+        }
+        final sortedKeys = dailyCounts.keys.toList()..sort();
+        final spots = <FlSpot>[];
+        for (int i = 0; i < sortedKeys.length; i++) {
+          spots.add(FlSpot(i.toDouble(), dailyCounts[sortedKeys[i]]!.toDouble()));
+        }
+        if (spots.isEmpty) {
+          return const Center(child: Text('No sale orders found.'));
+        }
+        return LineChart(
+          LineChartData(
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    final idx = value.toInt();
+                    if (idx < 0 || idx >= sortedKeys.length) return const SizedBox();
+                    final label = sortedKeys[idx].substring(5); // MM-DD
+                    return Text(label, style: const TextStyle(fontSize: 10));
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(show: true),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: Colors.blue,
+                barWidth: 3,
+                dotData: FlDotData(show: false),
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+}
+
+class _SaleOrdersPieChart extends StatelessWidget {
+  final String selectedClient;
+  const _SaleOrdersPieChart({required this.selectedClient});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance.collection('saleOrders').get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+        final filtered = selectedClient == 'All Clients'
+            ? docs
+            : docs.where((d) => d['clientId'] == selectedClient).toList();
+        int fulfilled = 0, open = 0;
+        for (final doc in filtered) {
+          final status = (doc['status'] ?? '').toString().toLowerCase();
+          if (status == 'fulfilled' || status == 'complete' || status == 'closed') {
+            fulfilled++;
+          } else {
+            open++;
+          }
+        }
+        if (fulfilled + open == 0) {
+          return const Center(child: Text('No sale orders found.'));
+        }
+        return PieChart(
+          PieChartData(
+            sections: [
+              PieChartSectionData(
+                value: fulfilled.toDouble(),
+                color: Colors.green,
+                title: 'Fulfilled ($fulfilled)',
+                radius: 60,
+                titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              PieChartSectionData(
+                value: open.toDouble(),
+                color: Colors.orange,
+                title: 'Open ($open)',
+                radius: 60,
+                titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+            sectionsSpace: 4,
+            centerSpaceRadius: 30,
+          ),
+        );
+      },
     );
   }
 } 

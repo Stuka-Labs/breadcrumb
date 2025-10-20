@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PackerScreen extends StatelessWidget {
   const PackerScreen({super.key});
@@ -9,7 +10,13 @@ class PackerScreen extends StatelessWidget {
     final authService = AuthService();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Packer Portal'),
+        title: Row(
+          children: [
+            Image.asset('assets/Breadcrumb.png', height: 36),
+            const SizedBox(width: 12),
+            const Text('Packer Portal'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -23,58 +30,74 @@ class PackerScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionHeader('Quick Add'),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 700),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _quickAddButton(context, 'New Sale Order', Icons.add_shopping_cart),
-                _quickAddButton(context, 'New Purchase Order', Icons.add_business),
+                _sectionHeader('Quick Add'),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    _quickAddButton(context, 'New Sale Order', Icons.add_shopping_cart),
+                    _quickAddButton(context, 'New Purchase Order', Icons.add_business),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                _sectionHeader('Warehouse'),
+                _featureGrid(context, [
+                  _featureTile(context, 'Stock Takes (PV)', Icons.fact_check),
+                  _featureTile(context, 'Wave Picks (PV)', Icons.waves),
+                  _featureTile(context, 'Warehouse Locations (PV)', Icons.location_on),
+                  _featureTile(context, 'Scan Allocate (PV)', Icons.qr_code_scanner),
+                  _featureTile(context, 'Scan Order (PV)', Icons.qr_code),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/packer-orders'),
+                    icon: const Icon(Icons.assignment_turned_in),
+                    label: const Text('Fulfill Orders'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 32),
+                _sectionHeader('Customer (Packer only)'),
+                _featureGrid(context, [
+                  _featureTile(context, 'Customer', Icons.people),
+                ]),
+                const SizedBox(height: 32),
+                _sectionHeader('Reports'),
+                _featureGrid(context, [
+                  _featureTile(context, 'Stock Movement (PV) (CV)', Icons.swap_horiz),
+                  _featureTile(context, 'Customer Stock (PV)', Icons.storage),
+                  _featureTile(context, 'Print Log (PV)', Icons.print),
+                  _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
+                ]),
+                const SizedBox(height: 32),
+                _sectionHeader('Contacts'),
+                _featureGrid(context, [
+                  _featureTile(context, 'Users', Icons.person),
+                  _featureTile(context, 'Customer', Icons.people_outline),
+                  _featureTile(context, 'Suppliers', Icons.local_shipping),
+                  _featureTile(context, 'Drivers', Icons.drive_eta),
+                  _featureTile(context, 'API Clients', Icons.api),
+                ]),
+                const SizedBox(height: 32),
+                _sectionHeader('More'),
+                _featureGrid(context, [
+                  _featureTile(context, 'Print Log (PV)', Icons.print),
+                  _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
+                ]),
+                _sectionHeader('Orders to Pack'),
+                _packerOrdersList(),
               ],
             ),
-            const SizedBox(height: 32),
-            _sectionHeader('Warehouse'),
-            _featureGrid(context, [
-              _featureTile(context, 'Stock Takes (PV)', Icons.fact_check),
-              _featureTile(context, 'Wave Picks (PV)', Icons.waves),
-              _featureTile(context, 'Warehouse Locations (PV)', Icons.location_on),
-              _featureTile(context, 'Scan Allocate (PV)', Icons.qr_code_scanner),
-              _featureTile(context, 'Scan Order (PV)', Icons.qr_code),
-            ]),
-            const SizedBox(height: 32),
-            _sectionHeader('Customer (Packer only)'),
-            _featureGrid(context, [
-              _featureTile(context, 'Customer', Icons.people),
-            ]),
-            const SizedBox(height: 32),
-            _sectionHeader('Reports'),
-            _featureGrid(context, [
-              _featureTile(context, 'Stock Movement (PV) (CV)', Icons.swap_horiz),
-              _featureTile(context, 'Customer Stock (PV)', Icons.storage),
-              _featureTile(context, 'Print Log (PV)', Icons.print),
-              _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
-            ]),
-            const SizedBox(height: 32),
-            _sectionHeader('Contacts'),
-            _featureGrid(context, [
-              _featureTile(context, 'Users', Icons.person),
-              _featureTile(context, 'Customer', Icons.people_outline),
-              _featureTile(context, 'Suppliers', Icons.local_shipping),
-              _featureTile(context, 'Drivers', Icons.drive_eta),
-              _featureTile(context, 'API Clients', Icons.api),
-            ]),
-            const SizedBox(height: 32),
-            _sectionHeader('More'),
-            _featureGrid(context, [
-              _featureTile(context, 'Print Log (PV)', Icons.print),
-              _featureTile(context, 'Bulk Pallet Label Printing (PV)', Icons.label),
-            ]),
-          ],
+          ),
         ),
       ),
     );
@@ -114,13 +137,9 @@ class PackerScreen extends StatelessWidget {
   }
 
   Widget _featureGrid(BuildContext context, List<Widget> tiles) {
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1.2,
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
       children: tiles,
     );
   }
@@ -195,6 +214,33 @@ class PackerScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _packerOrdersList() {
+    return FutureBuilder(
+      future: FirebaseFirestore.instance.collection('orders').where('type', isEqualTo: 'sale').get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final docs = (snapshot.data as QuerySnapshot).docs;
+        if (docs.isEmpty) return const Text('No sale orders to pack.');
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          itemBuilder: (context, i) {
+            final data = docs[i].data() as Map<String, dynamic>;
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              child: ListTile(
+                title: Text('Order #${docs[i].id}'),
+                subtitle: Text('Product: ${data['productId'] ?? ''}\nBin: ${data['productBin'] ?? ''}\nQty: ${data['quantity'] ?? ''}'),
+                trailing: Text(data['status'] ?? ''),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 } 
