@@ -53,9 +53,6 @@
     "indexes": "firestore.indexes.json",
     "rules": "firestore.rules"
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
   "emulators": {
     "auth": {
       "port": 9099

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/theme.dart';
-import 'dart:html' as html;
+import 'dart:html' as html show window;
 
 class ShopConnectDialog extends StatelessWidget {
   final VoidCallback? onConnected;
-  const ShopConnectDialog({super.key, this.onConnected});
+  final String? clientId;
+  const ShopConnectDialog({super.key, this.onConnected, this.clientId});
 
-  static const String shopifyInstallUrl = 'https://apps.shopify.com/'; // Replace with your actual app store listing URL if available
-  static const String backendBaseUrl = 'https://us-central1-breadcrumb-bd857.cloudfunctions.net/remix'; // Cloud Run deployed backend URL
+  static const String backendBaseUrl = 'https://remix-wgxs2bbz5q-uc.a.run.app'; // Cloud Run deployed backend URL
 
   @override
   Widget build(BuildContext context) {
@@ -80,13 +81,14 @@ class ShopConnectDialog extends StatelessWidget {
           textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
           elevation: 0,
         ),
-        onPressed: () async {
-          final url = Uri.parse(shopifyInstallUrl);
-          if (await canLaunchUrl(url)) {
-            await launchUrl(url, mode: LaunchMode.externalApplication);
+        onPressed: () {
+          if (kIsWeb) {
+            final clientIdParam = clientId != null ? '&clientId=$clientId' : '';
+            final url = '$backendBaseUrl/api/auth/shopify?shop=your-shop.myshopify.com$clientIdParam';
+            html.window.open(url, '_blank');
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Could not launch Shopify install URL')),
+              const SnackBar(content: Text('Shopify connection is only available on web platforms')),
             );
           }
         },
@@ -109,8 +111,14 @@ class ShopConnectDialog extends StatelessWidget {
           elevation: 0,
         ),
         onPressed: () {
-          final url = backendBaseUrl + path;
-          html.window.open(url, '_blank');
+          if (kIsWeb) {
+            final url = backendBaseUrl + path;
+            html.window.open(url, '_blank');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('OAuth connection is only available on web platforms')),
+            );
+          }
         },
       ),
     );

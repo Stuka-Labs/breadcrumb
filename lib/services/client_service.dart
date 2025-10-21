@@ -1,43 +1,74 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue;
 
 class ClientService {
-  static const String baseUrl = 'https://us-central1-breadcrumb-bd857.cloudfunctions.net/remix/api/clients';
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static Future<List<dynamic>> fetchClients() async {
-    final response = await http.get(Uri.parse(baseUrl));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load clients');
+  static Future<List<Map<String, dynamic>>> fetchClients() async {
+    try {
+      final snapshot = await _firestore.collection('clients').get();
+      return snapshot.docs.map((doc) => {
+        'id': doc.id,
+        ...doc.data(),
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch clients: $e');
     }
   }
 
   static Future<Map<String, dynamic>> createClient({
     required String name,
     required String shopType,
+    String? email,
+    String? phone,
+    String? address,
   }) async {
-    final response = await http.post(
-      Uri.parse(baseUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    try {
+      final docRef = await _firestore.collection('clients').add({
         'name': name,
         'shopType': shopType,
-      }),
-    );
-    if (response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to create client');
+        'email': email,
+        'phone': phone,
+        'address': address,
+        'status': 'active',
+        'stats': {
+          'orders': 0,
+          'products': 0,
+          'purchaseOrders': 0,
+          'lastActivity': FieldValue.serverTimestamp(),
+        },
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      return {
+        'id': docRef.id,
+        'name': name,
+        'shopType': shopType,
+        'email': email,
+        'phone': phone,
+        'address': address,
+        'status': 'active',
+        'stats': {'orders': 0, 'products': 0, 'purchaseOrders': 0}
+      };
+    } catch (e) {
+      throw Exception('Failed to create client: $e');
     }
   }
 
   static Future<Map<String, dynamic>> fetchClientById(String id) async {
-    final response = await http.get(Uri.parse('$baseUrl/$id'));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load client');
+    try {
+      final doc = await _firestore.collection('clients').doc(id).get();
+      if (doc.exists) {
+        return {
+          'id': doc.id,
+          ...doc.data()!,
+        };
+      } else {
+        throw Exception('Client not found');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch client: $e');
     }
   }
 
@@ -45,26 +76,61 @@ class ClientService {
     required String id,
     required String name,
     required String shopType,
+    String? email,
+    String? phone,
+    String? address,
+    String? status,
   }) async {
-    final response = await http.patch(
-      Uri.parse('$baseUrl/$id'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    try {
+      final updateData = <String, dynamic>{
         'name': name,
         'shopType': shopType,
-      }),
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to update client');
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      
+      if (email != null) updateData['email'] = email;
+      if (phone != null) updateData['phone'] = phone;
+      if (address != null) updateData['address'] = address;
+      if (status != null) updateData['status'] = status;
+
+      await _firestore.collection('clients').doc(id).update(updateData);
+      
+      final updatedDoc = await _firestore.collection('clients').doc(id).get();
+      return {
+        'id': updatedDoc.id,
+        ...updatedDoc.data()!,
+      };
+    } catch (e) {
+      throw Exception('Failed to update client: $e');
     }
   }
 
   static Future<void> deleteClient(String id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/$id'));
-    if (response.statusCode != 204) {
-      throw Exception('Failed to delete client');
+    try {
+      await _firestore.collection('clients').doc(id).delete();
+    } catch (e) {
+      throw Exception('Failed to delete client: $e');
+    }
+  }
+
+  static Future<void> updateClientStats(String clientId, {
+    int? orders,
+    int? products,
+    int? purchaseOrders,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{
+        'updatedAt': FieldValue.serverTimestamp(),
+        'stats.lastActivity': FieldValue.serverTimestamp(),
+      };
+      
+      if (orders != null) updateData['stats.orders'] = FieldValue.increment(orders);
+      if (products != null) updateData['stats.products'] = FieldValue.increment(products);
+      if (purchaseOrders != null) updateData['stats.purchaseOrders'] = FieldValue.increment(purchaseOrders);
+
+      await _firestore.collection('clients').doc(clientId).update(updateData);
+    } catch (e) {
+      throw Exception('Failed to update client stats: $e');
     }
   }
 } 

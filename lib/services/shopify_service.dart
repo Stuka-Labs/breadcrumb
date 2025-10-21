@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ShopifyService {
-  static const String baseUrl = 'https://cardiac-statistical-oral-made.trycloudflare.com/api'; // Update with your deployed Remix app URL
+  static const String baseUrl = 'https://remix-wgxs2bbz5q-uc.a.run.app/api'; // Update with your deployed Remix app URL
 
   static Future<List<dynamic>> fetchOrders() async {
     final user = FirebaseAuth.instance.currentUser;

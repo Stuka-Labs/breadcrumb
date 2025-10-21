@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/client_service.dart';
 
 class AdminClientsScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
         clients = c;
         filteredClients = c;
         loading = false;
+        error = null;
       });
     } catch (e) {
       setState(() {
@@ -50,41 +52,129 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
     });
   }
 
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'Never';
+    
+    try {
+      DateTime dateTime;
+      if (timestamp is Timestamp) {
+        dateTime = timestamp.toDate();
+      } else if (timestamp is DateTime) {
+        dateTime = timestamp;
+      } else if (timestamp is Map && timestamp.containsKey('seconds')) {
+        // Handle Firestore timestamp from JSON
+        dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+      } else {
+        return 'Invalid date';
+      }
+      
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inDays > 0) {
+        return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void openClientDetails(Map<String, dynamic> client) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(client['name'] ?? client['id']),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text('Shop Type: ${client['shopType'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Orders: ${client['stats']?['orders'] ?? 0}'),
-            Text('Products: ${client['stats']?['products'] ?? 0}'),
-            Text('Purchase Orders: ${client['stats']?['purchaseOrders'] ?? 0}'),
-            Text('Last Activity: ${client['stats']?['lastActivity'] ?? ''}'),
+            const Icon(Icons.business, color: Colors.blue),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                client['name'] ?? client['id'],
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+        content: Container(
+          width: double.maxFinite,
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoRow('Shop Type', client['shopType'] ?? 'N/A'),
+              const SizedBox(height: 12),
+              const Text(
+                'Statistics',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow('Orders', '${client['stats']?['orders'] ?? 0}'),
+              _buildInfoRow('Products', '${client['stats']?['products'] ?? 0}'),
+              _buildInfoRow('Purchase Orders', '${client['stats']?['purchaseOrders'] ?? 0}'),
+              const SizedBox(height: 12),
+              _buildInfoRow('Last Activity', _formatTimestamp(client['stats']?['lastActivity'])),
+            ],
           ),
-          TextButton(
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close),
+            label: const Text('Close'),
+          ),
+          TextButton.icon(
             onPressed: () {
               Navigator.pop(context);
               showEditClientDialog(client);
             },
-            child: const Text('Edit'),
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit'),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () {
               Navigator.pop(context);
               showDeleteClientDialog(client);
             },
-            child: const Text('Delete'),
+            icon: const Icon(Icons.delete, color: Colors.red),
+            label: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -267,7 +357,22 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
             child: loading
                 ? const Center(child: CircularProgressIndicator())
                 : error != null
-                    ? Center(child: Text('Error: $error'))
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+                            const SizedBox(height: 16),
+                            Text('Error: $error', style: const TextStyle(fontSize: 16)),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: fetchClients,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
                     : filteredClients.isEmpty
                         ? const Center(child: Text('No clients found.'))
                         : ListView.builder(

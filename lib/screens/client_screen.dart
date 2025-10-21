@@ -4,7 +4,9 @@ import '../constants/theme.dart';
 import '../widgets/shop_connect_dialog.dart';
 import '../services/ai_insights_service.dart';
 import '../services/shopify_service.dart';
-import 'dart:html' as html;
+import 'shopify_connect_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html show window;
 import '../services/auth_service.dart';
 import 'new_sale_order_screen.dart';
 import 'new_purchase_order_screen.dart';
@@ -31,13 +33,15 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     fetchAIInsight();
-    // Detect OAuth callback
-    final uri = Uri.parse(html.window.location.href);
-    if (uri.queryParameters['connected'] == 'success') {
-      setState(() {
-        hasConnectedShop = true;
-      });
-      fetchShopData();
+    // Detect OAuth callback (web only)
+    if (kIsWeb) {
+      final uri = Uri.parse(html.window.location.href);
+      if (uri.queryParameters['connected'] == 'success') {
+        setState(() {
+          hasConnectedShop = true;
+        });
+        fetchShopData();
+      }
     }
   }
 
@@ -145,6 +149,17 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                 await showDialog(
                   context: context,
                   builder: (context) => ShopConnectDialog(onConnected: onShopConnected),
+                );
+              },
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.store),
+              label: const Text('Shopify'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ShopifyConnectScreen()),
                 );
               },
               style: ElevatedButton.styleFrom(

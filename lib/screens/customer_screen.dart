@@ -7,7 +7,7 @@ class CustomerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Customer')),
-      body: const Center(child: Text('Customer (Packer only) Page')),
+      body: const Center(child: Text('Customer Management Page')),
     );
   }
 } 

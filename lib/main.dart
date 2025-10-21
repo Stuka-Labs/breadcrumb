@@ -337,6 +337,8 @@ class AuthWrapper extends StatelessWidget {
                   return const PackerScreen();
                 } else if (role == 'client') {
                   return const ClientScreen();
+                } else if (role == 'admin') {
+                  return const AdminScreen();
                 }
                 
                 return const SignInScreen();

@@ -101,7 +101,7 @@ class AuthService {
 
   Future<Map<String, dynamic>> createUserWithRole(String email, String password, String role) async {
     try {
-      final url = Uri.parse('https://us-central1-breadcrumb-bd857.cloudfunctions.net/createUserWithRoleHttp');
+      final url = Uri.parse('https://remix-wgxs2bbz5q-uc.a.run.app/createUserWithRoleHttp');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -151,15 +151,15 @@ class AuthService {
 
       // Create new user document
       await _firestore.collection('users').doc(uid).set({
-        email: userData['email'] ?? '',
-        role: role,
-        username: userData['username'] ?? '',
-        createdAt: userData['createdAt'] ?? FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        status: 'active',
-        warehouseId: userData['warehouseId'] ?? '',
-        customerId: userData['customerId'] ?? '',
-        lastLogin: FieldValue.serverTimestamp()
+        'email': userData['email'] ?? '',
+        'role': role,
+        'username': userData['username'] ?? '',
+        'createdAt': userData['createdAt'] ?? FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'status': 'active',
+        'warehouseId': userData['warehouseId'] ?? '',
+        'customerId': userData['customerId'] ?? '',
+        'lastLogin': FieldValue.serverTimestamp()
       });
 
       debugPrint('User migrated successfully to new collection');

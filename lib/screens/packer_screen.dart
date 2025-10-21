@@ -66,7 +66,7 @@ class PackerScreen extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: 32),
-                _sectionHeader('Customer (Packer only)'),
+                _sectionHeader('Customer Management'),
                 _featureGrid(context, [
                   _featureTile(context, 'Customer', Icons.people),
                 ]),
