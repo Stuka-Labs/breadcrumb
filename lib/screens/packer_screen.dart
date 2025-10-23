@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'packer_picking_screen.dart';
 
 class PackerScreen extends StatelessWidget {
   const PackerScreen({super.key});
@@ -56,9 +57,12 @@ class PackerScreen extends StatelessWidget {
                   _featureTile(context, 'Scan Allocate (PV)', Icons.qr_code_scanner),
                   _featureTile(context, 'Scan Order (PV)', Icons.qr_code),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, '/packer-orders'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PackerPickingScreen()),
+                    ),
                     icon: const Icon(Icons.assignment_turned_in),
-                    label: const Text('Fulfill Orders'),
+                    label: const Text('Picking System'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),

@@ -82,4 +82,10 @@ exports.notifyOrderFulfilled = functions.firestore
     return null;
   });
 
+// Import the test user setup function
+const { setupTestUser } = require('./setupTestUser');
+
+// Export the test user setup function
+exports.setupTestUser = setupTestUser;
+
 exports.remix = functions.https.onRequest(app); 

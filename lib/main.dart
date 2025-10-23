@@ -61,6 +61,8 @@ import 'screens/wave_picks_screen.dart';
 import 'screens/warehouse_locations_screen.dart';
 import 'screens/scan_allocate_screen.dart';
 import 'screens/scan_order_screen.dart';
+import 'screens/packer_picking_screen.dart';
+import 'screens/client_bin_analytics_screen.dart';
 import 'constants/theme.dart';
 import 'screens/client_screen.dart';
 
@@ -228,6 +230,8 @@ class MyApp extends StatelessWidget {
         '/warehouse-locations': (context) => const WarehouseLocationsScreen(),
         '/scan-allocate': (context) => const ScanAllocateScreen(),
         '/scan-order': (context) => const ScanOrderScreen(),
+        '/packer-picking': (context) => const PackerPickingScreen(),
+        '/client-bin-analytics': (context) => const ClientBinAnalyticsScreen(),
       },
     );
   }

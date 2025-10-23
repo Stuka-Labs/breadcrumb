@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/demo_data_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   final bool isAdminCreating;
@@ -44,6 +45,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'role': _selectedRole,
             'createdAt': FieldValue.serverTimestamp(),
           });
+          
+          // Auto-populate demo data for client@gmail.com
+          if (_emailController.text.trim() == 'client@gmail.com' && _selectedRole == 'client') {
+            try {
+              await DemoDataService.populateDemoData(userCredential.user!.uid);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🎉 Demo account created! You now have access to sample orders, products, and analytics.'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 4),
+                  ),
+                );
+              }
+            } catch (e) {
+              debugPrint('Error populating demo data: $e');
+            }
+          }
           // Delete the new user's session so admin stays signed in
           await FirebaseAuth.instance.currentUser?.delete();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +108,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'role': selectedRole,
                 'createdAt': FieldValue.serverTimestamp(),
               });
+              
+                  // Auto-populate demo data for client@gmail.com
+                  if (_emailController.text.trim() == 'client@gmail.com' && selectedRole == 'client') {
+                    try {
+                      await DemoDataService.populateDemoData(userCredential.user!.uid);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🎉 Demo account created! You now have access to sample orders, products, and analytics.'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 4),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('Error populating demo data: $e');
+                    }
+                  }
             }
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Account created successfully!')),
