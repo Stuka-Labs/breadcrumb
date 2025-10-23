@@ -538,6 +538,9 @@ class _EditLocationDialogState extends State<EditLocationDialog> {
   late int currentStock;
   late String status;
   late bool isFilled;
+  late TextEditingController _capacityController;
+  late TextEditingController _stockController;
+  
   @override
   void initState() {
     super.initState();
@@ -545,6 +548,15 @@ class _EditLocationDialogState extends State<EditLocationDialog> {
     currentStock = widget.cell.currentStock;
     status = widget.cell.status;
     isFilled = widget.cell.isFilled;
+    _capacityController = TextEditingController(text: capacity.toString());
+    _stockController = TextEditingController(text: currentStock.toString());
+  }
+  
+  @override
+  void dispose() {
+    _capacityController.dispose();
+    _stockController.dispose();
+    super.dispose();
   }
   @override
   Widget build(BuildContext context) {
@@ -556,18 +568,33 @@ class _EditLocationDialogState extends State<EditLocationDialog> {
           SwitchListTile(
             title: const Text('Enable Bin'),
             value: isFilled,
-            onChanged: (v) => setState(() => isFilled = v),
+            onChanged: (v) => setState(() {
+              isFilled = v;
+              // Set default capacity when enabling bin
+              if (v && capacity == 0) {
+                capacity = 100;
+                _capacityController.text = capacity.toString();
+              }
+            }),
           ),
           if (isFilled) ...[
             TextFormField(
-              initialValue: capacity.toString(),
-              decoration: const InputDecoration(labelText: 'Capacity'),
+              controller: _capacityController,
+              decoration: const InputDecoration(
+                labelText: 'Capacity',
+                hintText: 'Maximum items this bin can hold',
+                helperText: 'Default: 100 items',
+              ),
               keyboardType: TextInputType.number,
               onChanged: (v) => capacity = int.tryParse(v) ?? 0,
             ),
             TextFormField(
-              initialValue: currentStock.toString(),
-              decoration: const InputDecoration(labelText: 'Current Stock'),
+              controller: _stockController,
+              decoration: const InputDecoration(
+                labelText: 'Current Stock',
+                hintText: 'Number of items currently in this bin',
+                helperText: 'Start with 0 for empty bins',
+              ),
               keyboardType: TextInputType.number,
               onChanged: (v) => currentStock = int.tryParse(v) ?? 0,
             ),

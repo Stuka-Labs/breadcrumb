@@ -4,6 +4,7 @@ import 'signup_screen.dart';
 import 'onboarding_screen.dart';
 import 'warehouse_3d_screen.dart';
 import 'admin_clients_screen.dart';
+import 'client_management_screen.dart';
 import 'new_sale_order_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -323,17 +324,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             ),
           ),
           // Customer Tab
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: ListTile(
-              leading: const Icon(Icons.people),
-              title: const Text('Customer'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CustomerScreen()),
-              ),
-            ),
-          ),
+          const ClientManagementScreen(),
           // Reports & More Tab
           SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -566,7 +557,7 @@ class _SaleOrdersLineChart extends StatelessWidget {
             filtered = _getDemoSaleOrders();
           } else {
             // For real clients, use actual data
-            filtered = docs.where((d) => d['clientId'] == selectedClient)
+            filtered = docs.where((d) => (d.data() as Map<String, dynamic>)['clientId'] == selectedClient)
                 .map((d) => d.data() as Map<String, dynamic>).toList();
           }
         }
@@ -778,7 +769,7 @@ class _SaleOrdersPieChart extends StatelessWidget {
             clientFiltered = _getDemoSaleOrders();
           } else {
             // For real clients, use actual data
-            clientFiltered = docs.where((d) => d['clientId'] == selectedClient)
+            clientFiltered = docs.where((d) => (d.data() as Map<String, dynamic>)['clientId'] == selectedClient)
                 .map((d) => d.data() as Map<String, dynamic>).toList();
           }
         }
