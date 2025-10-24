@@ -1,9 +1,13 @@
 {
   "version": 2,
-  "framework": "remix",
   "buildCommand": "cd breadcrumb && npm run build",
   "installCommand": "cd breadcrumb && npm install",
-  "rootDirectory": "breadcrumb",
+  "outputDirectory": "breadcrumb/build",
+  "functions": {
+    "breadcrumb/server.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
