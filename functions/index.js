@@ -1,91 +1,51 @@
-const functions = require('firebase-functions');
-const { createRequestHandler } = require('@remix-run/express');
-const express = require('express');
-const admin = require('firebase-admin');
-const remixBuild = require('./build');
-const nodemailer = require('nodemailer');
+const { onRequest } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
 
-admin.initializeApp();
+// Set global options
+setGlobalOptions({
+  maxInstances: 10,
+  memory: "1GiB",
+  timeoutSeconds: 60,
+});
 
-const app = express();
-
-// Middleware to check Firebase Auth token
-app.use(async (req, res, next) => {
-  // Allow preflight CORS requests through (for OPTIONS)
-  if (req.method === 'OPTIONS') return next();
-
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).send('Unauthorized: Missing or invalid Authorization header');
-  }
-  const idToken = authHeader.split('Bearer ')[1];
+// Create request handler for Remix app
+const requestHandler = async (req, res) => {
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    req.user = decodedToken;
-    next();
-  } catch (err) {
-    return res.status(401).send('Unauthorized: Invalid token');
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
     }
-});
 
-app.all(
-  '*',
-  createRequestHandler({
-    build: remixBuild,
-    mode: process.env.NODE_ENV,
-  })
-);
+    // Import the Remix serverless function dynamically
+    const { createRequestHandler } = require("@remix-run/express");
+    const { installGlobals } = require("@remix-run/node");
+    
+    // Install globals
+    installGlobals();
+    
+    // Import the server build
+    const serverBuild = require("../breadcrumb/build/server/index.js");
+    
+    // Create the request handler
+    const handler = createRequestHandler(serverBuild, "production");
+    
+    // Handle the request
+    await handler(req, res);
+    
+  } catch (error) {
+    console.error('Function error:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
 
-// Configure your email transport (example: Gmail, replace with your SMTP)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.NOTIFY_EMAIL_USER,
-    pass: process.env.NOTIFY_EMAIL_PASS,
-  },
-});
-
-exports.notifyOrderFulfilled = functions.firestore
-  .document('orders/{orderId}')
-  .onUpdate(async (change, context) => {
-    const before = change.before.data();
-    const after = change.after.data();
-    if (before.status !== 'fulfilled' && after.status === 'fulfilled') {
-      const clientEmail = after.customer?.email;
-      if (!clientEmail) return null;
-      const mailOptions = {
-        from: process.env.NOTIFY_EMAIL_USER,
-        to: clientEmail,
-        subject: `Your Order ${after.name} Has Been Fulfilled!`,
-        text: `Hello,\n\nYour order ${after.name} has been fulfilled and is on its way!\n\nThank you for using Breadcrumb.`,
-      };
-      try {
-        await transporter.sendMail(mailOptions);
-        await admin.firestore().collection('logs').add({
-          type: 'notification',
-          action: 'order_fulfilled_email',
-          orderId: context.params.orderId,
-          email: clientEmail,
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        await admin.firestore().collection('logs').add({
-          type: 'notification',
-          action: 'order_fulfilled_email_failed',
-          orderId: context.params.orderId,
-          email: clientEmail,
-          error: error.message || String(error),
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-    return null;
-  });
-
-// Import the test user setup function
-const { setupTestUser } = require('./setupTestUser');
-
-// Export the test user setup function
-exports.setupTestUser = setupTestUser;
-
-exports.remix = functions.https.onRequest(app); 
+// Export the Firebase function
+exports.remixApp = onRequest({
+  region: "us-central1",
+  cors: true,
+}, requestHandler);
