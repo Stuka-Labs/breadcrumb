@@ -16,7 +16,6 @@ import 'wave_picks_screen.dart';
 import 'warehouse_locations_screen.dart';
 import 'scan_allocate_screen.dart';
 import 'scan_order_screen.dart';
-import 'customer_screen.dart';
 import 'new_purchase_order_screen.dart';
 import '../services/benny_data_seeder.dart';
 import '../services/warehouse_demo_seeder.dart';
@@ -131,51 +130,312 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header Section
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.blue.shade800],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.shade200,
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.dashboard,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Warehouse Dashboard',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Real-time analytics and insights',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Filter Controls
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            DropdownButton<String>(
+                              value: selectedClient,
+                              dropdownColor: Colors.white,
+                              style: const TextStyle(color: Colors.black),
+                              items: [
+                                const DropdownMenuItem(value: 'All Clients', child: Text('All Clients')),
+                                ...clients.map((c) => DropdownMenuItem<String>(
+                                  value: c['id'], 
+                                  child: Text(c['name'])
+                                )).toList(),
+                              ],
+                              onChanged: isLoadingClients ? null : (v) => setState(() => selectedClient = v ?? 'All Clients'),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButton<String>(
+                              value: selectedTimePeriod,
+                              dropdownColor: Colors.white,
+                              style: const TextStyle(color: Colors.black),
+                              items: const [
+                                DropdownMenuItem(value: 'Daily', child: Text('Daily')),
+                                DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
+                                DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                              ],
+                              onChanged: (v) => setState(() => selectedTimePeriod = v ?? 'Daily'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Key Metrics Cards
                 Row(
                   children: [
-                    Text('Sale Orders ($selectedTimePeriod)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(width: 16),
-                    DropdownButton<String>(
-                      value: selectedClient,
-                      items: [
-                        const DropdownMenuItem(value: 'All Clients', child: Text('All Clients')),
-                        ...clients.map((c) => DropdownMenuItem<String>(
-                          value: c['id'], 
-                          child: Text(c['name'])
-                        )).toList(),
-                      ],
-                      onChanged: isLoadingClients ? null : (v) => setState(() => selectedClient = v ?? 'All Clients'),
+                    Expanded(
+                      child: _buildMetricCard(
+                        'Total Orders',
+                        '24',
+                        Icons.shopping_cart,
+                        Colors.blue,
+                        '+12%',
+                      ),
                     ),
                     const SizedBox(width: 16),
-                    DropdownButton<String>(
-                      value: selectedTimePeriod,
-                      items: const [
-                        DropdownMenuItem(value: 'Daily', child: Text('Daily')),
-                        DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
-                        DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
-                      ],
-                      onChanged: (v) => setState(() => selectedTimePeriod = v ?? 'Daily'),
+                    Expanded(
+                      child: _buildMetricCard(
+                        'Revenue',
+                        '\$12,450',
+                        Icons.attach_money,
+                        Colors.green,
+                        '+8%',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildMetricCard(
+                        'Fulfillment Rate',
+                        '94%',
+                        Icons.check_circle,
+                        Colors.orange,
+                        '+3%',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildMetricCard(
+                        'Active Clients',
+                        '8',
+                        Icons.people,
+                        Colors.purple,
+                        '+2',
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 220,
-                  width: double.infinity,
-                  child: _SaleOrdersLineChart(
-                    selectedClient: selectedClient, 
-                    timePeriod: selectedTimePeriod,
-                  ),
-                ),
+                
                 const SizedBox(height: 32),
-                const Text('Sale Orders: Fulfilled vs Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 220,
-                  width: double.infinity,
-                  child: _SaleOrdersPieChart(
-                    selectedClient: selectedClient,
-                    timePeriod: selectedTimePeriod,
+                
+                // Charts Section
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200,
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.trending_up,
+                                    color: Colors.blue.shade600,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Sale Orders ($selectedTimePeriod)',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              height: 250,
+                              child: _SaleOrdersLineChart(
+                                selectedClient: selectedClient, 
+                                timePeriod: selectedTimePeriod,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200,
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.pie_chart,
+                                    color: Colors.green.shade600,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Order Status',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              height: 250,
+                              child: _SaleOrdersPieChart(
+                                selectedClient: selectedClient,
+                                timePeriod: selectedTimePeriod,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Recent Activity Section
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.shade200,
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.history,
+                              color: Colors.orange.shade600,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Recent Activity',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildRecentActivityList(),
+                    ],
                   ),
                 ),
               ],
@@ -247,78 +507,167 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ListTile(
-                  leading: const Icon(Icons.inventory),
-                  title: const Text('Products (CV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                // Header Section
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.blue.shade800],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.shade200,
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.warehouse,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Warehouse Operations',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Manage inventory, orders, and warehouse operations',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.shopping_bag),
-                  title: const Text('Purchase Orders (CV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const PurchaseOrdersScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.sell),
-                  title: const Text('Sale Orders (CV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SaleOrdersScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.fact_check),
-                  title: const Text('Stock Takes (PV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const StockTakesScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.waves),
-                  title: const Text('Wave Picks (PV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const WavePicksScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.location_on),
-                  title: const Text('Warehouse Locations (PV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const WarehouseLocationsScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.qr_code_scanner),
-                  title: const Text('Scan Allocate (PV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ScanAllocateScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.qr_code),
-                  title: const Text('Scan Order (PV)'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ScanOrderScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.view_in_ar),
-                  title: const Text('3D Warehouse Editor'),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const Warehouse3DScreen()),
-                    );
-                  },
+                
+                const SizedBox(height: 32),
+                
+                // Operations Grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.1,
+                  children: [
+                    _buildWarehouseCard(
+                      'Products',
+                      'Manage inventory and product catalog',
+                      Icons.inventory_2,
+                      Colors.blue,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Purchase Orders',
+                      'Track incoming inventory orders',
+                      Icons.shopping_bag,
+                      Colors.green,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PurchaseOrdersScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Sale Orders',
+                      'Manage outgoing customer orders',
+                      Icons.sell,
+                      Colors.orange,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SaleOrdersScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Stock Takes',
+                      'Perform inventory audits and counts',
+                      Icons.fact_check,
+                      Colors.purple,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const StockTakesScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Wave Picks',
+                      'Organize picking operations',
+                      Icons.waves,
+                      Colors.teal,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const WavePicksScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Warehouse Layout',
+                      'Configure warehouse zones and bins',
+                      Icons.location_on,
+                      Colors.red,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const WarehouseLocationsScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Scan Allocate',
+                      'Allocate products to orders',
+                      Icons.qr_code_scanner,
+                      Colors.indigo,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScanAllocateScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      'Scan Orders',
+                      'Process orders with barcode scanning',
+                      Icons.qr_code,
+                      Colors.brown,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScanOrderScreen()),
+                      ),
+                    ),
+                    _buildWarehouseCard(
+                      '3D Warehouse',
+                      'Visualize warehouse in 3D',
+                      Icons.view_in_ar,
+                      Colors.pink,
+                      () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const Warehouse3DScreen()),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -331,81 +680,182 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ListTile(
-                  leading: const Icon(Icons.receipt_long),
-                  title: const Text('Invoices (CV)'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.bar_chart),
-                  title: const Text('Stock Report'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const StockReportScreen()),
+                // Header Section
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple.shade600, Colors.purple.shade800],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.shade200,
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.analytics,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Reports & Administration',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Access reports, settings, and administrative tools',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.receipt),
-                  title: const Text('Bills'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.credit_card),
-                  title: const Text('Rate Cards'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.settings_applications),
-                  title: const Text('Warehouse Settings'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.business),
-                  title: const Text('Organisation Settings'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.people),
-                  title: const Text('Clients Overview'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminClientsScreen()),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.home),
-                  title: const Text('Addresses'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('Product Settings'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('Documents (CV)'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.attach_money),
-                  title: const Text('Cash on Delivery'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.import_export),
-                  title: const Text('Import Log'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.print),
-                  title: const Text('Print Log (PV)'),
-                  onTap: () {},
-                ),
-                ListTile(
-                  leading: const Icon(Icons.label),
-                  title: const Text('Bulk Pallet Label Printing (PV)'),
-                  onTap: () {},
+                
+                const SizedBox(height: 32),
+                
+                // Operations Grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.1,
+                  children: [
+                    _buildReportsCard(
+                      'Invoices',
+                      'Generate and manage invoices',
+                      Icons.receipt_long,
+                      Colors.blue,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Stock Report',
+                      'View inventory reports and analytics',
+                      Icons.bar_chart,
+                      Colors.green,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const StockReportScreen()),
+                      ),
+                    ),
+                    _buildReportsCard(
+                      'Bills',
+                      'Manage vendor bills and payments',
+                      Icons.receipt,
+                      Colors.orange,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Rate Cards',
+                      'Configure pricing and rate structures',
+                      Icons.credit_card,
+                      Colors.purple,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Warehouse Settings',
+                      'Configure warehouse parameters',
+                      Icons.settings_applications,
+                      Colors.teal,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Organization Settings',
+                      'Manage organization preferences',
+                      Icons.business,
+                      Colors.indigo,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Clients Overview',
+                      'View and manage client accounts',
+                      Icons.people,
+                      Colors.pink,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AdminClientsScreen()),
+                      ),
+                    ),
+                    _buildReportsCard(
+                      'Addresses',
+                      'Manage shipping and billing addresses',
+                      Icons.home,
+                      Colors.brown,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Product Settings',
+                      'Configure product parameters',
+                      Icons.settings,
+                      Colors.cyan,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Documents',
+                      'Access and manage documents',
+                      Icons.description,
+                      Colors.grey,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Cash on Delivery',
+                      'Manage COD payment settings',
+                      Icons.attach_money,
+                      Colors.amber,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Import Log',
+                      'View data import history',
+                      Icons.import_export,
+                      Colors.deepOrange,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Print Log',
+                      'View printing history and logs',
+                      Icons.print,
+                      Colors.lightBlue,
+                      () {},
+                    ),
+                    _buildReportsCard(
+                      'Bulk Label Printing',
+                      'Print labels in bulk quantities',
+                      Icons.label,
+                      Colors.lightGreen,
+                      () {},
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -469,6 +919,328 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         );
       }
     }
+  }
+
+  Widget _buildReportsCard(String title, String description, IconData icon, Color color, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: color,
+                        size: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: color.withOpacity(0.6),
+                      size: 14,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWarehouseCard(String title, String description, IconData icon, Color color, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: color,
+                        size: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: color.withOpacity(0.6),
+                      size: 14,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String value, IconData icon, Color color, String change) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 24,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  change,
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityList() {
+    final activities = [
+      {
+        'icon': Icons.shopping_cart,
+        'title': 'New order received',
+        'subtitle': 'Order #BENNY-2024-001 from Alex Chen',
+        'time': '2 minutes ago',
+        'color': Colors.blue,
+      },
+      {
+        'icon': Icons.check_circle,
+        'title': 'Order fulfilled',
+        'subtitle': 'Order #BENNY-2024-002 completed',
+        'time': '15 minutes ago',
+        'color': Colors.green,
+      },
+      {
+        'icon': Icons.warehouse,
+        'title': 'Inventory updated',
+        'subtitle': 'BENNY Hoodie stock replenished',
+        'time': '1 hour ago',
+        'color': Colors.orange,
+      },
+      {
+        'icon': Icons.person_add,
+        'title': 'New client onboarded',
+        'subtitle': 'Supreme brand connected',
+        'time': '2 hours ago',
+        'color': Colors.purple,
+      },
+    ];
+
+    return Column(
+      children: activities.map((activity) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.grey.shade200,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (activity['color'] as Color).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  activity['icon'] as IconData,
+                  color: activity['color'] as Color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      activity['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      activity['subtitle'] as String,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                activity['time'] as String,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   // Seed warehouse data for demonstration
@@ -611,30 +1383,92 @@ class _SaleOrdersLineChart extends StatelessWidget {
         
         return LineChart(
           LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: true,
+              horizontalInterval: 1,
+              verticalInterval: 1,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.shade200,
+                  strokeWidth: 1,
+                );
+              },
+              getDrawingVerticalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.shade200,
+                  strokeWidth: 1,
+                );
+              },
+            ),
             titlesData: FlTitlesData(
-              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      value.toInt().toString(),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
+                ),
+              ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
+                  reservedSize: 30,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
                     if (idx < 0 || idx >= sortedKeys.length) return const SizedBox();
                     final label = _formatTimeLabel(sortedKeys[idx], timePeriod);
-                    return Text(label, style: const TextStyle(fontSize: 10));
+                    return Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
                   },
                 ),
               ),
               topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
               rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
-            borderData: FlBorderData(show: true),
+            borderData: FlBorderData(
+              show: true,
+              border: Border.all(
+                color: Colors.grey.shade300,
+                width: 1,
+              ),
+            ),
             lineBarsData: [
               LineChartBarData(
                 spots: spots,
                 isCurved: true,
-                color: Colors.blue,
-                barWidth: 3,
-                dotData: FlDotData(show: false),
+                color: Colors.blue.shade600,
+                barWidth: 4,
+                isStrokeCapRound: true,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 4,
+                      color: Colors.blue.shade600,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Colors.blue.shade50,
+                ),
               ),
             ],
           ),
@@ -825,21 +1659,37 @@ class _SaleOrdersPieChart extends StatelessWidget {
             sections: [
               PieChartSectionData(
                 value: fulfilled.toDouble(),
-                color: Colors.green,
-                title: 'Fulfilled ($fulfilled)',
-                radius: 60,
-                titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                color: Colors.green.shade600,
+                title: 'Fulfilled\n($fulfilled)',
+                radius: 80,
+                titleStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                titlePositionPercentageOffset: 0.6,
               ),
               PieChartSectionData(
                 value: open.toDouble(),
-                color: Colors.orange,
-                title: 'Open ($open)',
-                radius: 60,
-                titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                color: Colors.orange.shade600,
+                title: 'Open\n($open)',
+                radius: 80,
+                titleStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                titlePositionPercentageOffset: 0.6,
               ),
             ],
-            sectionsSpace: 4,
-            centerSpaceRadius: 30,
+            sectionsSpace: 2,
+            centerSpaceRadius: 50,
+            centerSpaceColor: Colors.white,
+            pieTouchData: PieTouchData(
+              touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                // Handle touch events if needed
+              },
+            ),
           ),
         );
       },

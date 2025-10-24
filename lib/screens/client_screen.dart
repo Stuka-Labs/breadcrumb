@@ -256,6 +256,8 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
         'tax': 14.40,
         'total': (products[0]['price'] as double) + (products[1]['price'] as double) * 2 + 9.99 + 14.40,
         'status': 'pending',
+        'queuePosition': null,
+        'averageShipTime': null,
         'priority': 'normal',
         'createdAt': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 2))),
         'updatedAt': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 1)))
@@ -282,6 +284,8 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
         'tax': 13.60,
         'total': (products[2]['price'] as double) + (products[3]['price'] as double) + 12.99 + 13.60,
         'status': 'processing',
+        'queuePosition': 3,
+        'averageShipTime': 45, // minutes
         'priority': 'high',
         'createdAt': Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 1))),
         'updatedAt': Timestamp.now()
@@ -307,6 +311,8 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
         'tax': 7.12,
         'total': (products[4]['price'] as double) + 8.99 + 7.12,
         'status': 'shipped',
+        'queuePosition': null,
+        'averageShipTime': null,
         'priority': 'normal',
         'trackingNumber': '${template.brandName.toUpperCase()}123456789',
         'shippedAt': Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 6))),
@@ -416,15 +422,17 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
           ],
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 700),
-          child: isDemoUser
-              ? _buildDemoDashboard()
-              : hasConnectedShop
-                  ? _buildDashboardWithData()
-                  : _buildConnectShopPrompt(),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: double.infinity,
+            child: isDemoUser
+                ? _buildDemoDashboard()
+                : hasConnectedShop
+                    ? _buildDashboardWithData()
+                    : _buildConnectShopPrompt(),
+          );
+        },
       ),
     );
   }
@@ -453,11 +461,13 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
   }
 
   Widget _buildDemoDashboardTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(constraints.maxWidth > 600 ? 24 : 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Welcome Banner
           Container(
             width: double.infinity,
@@ -496,48 +506,181 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
           const SizedBox(height: 24),
 
           // Quick Add menu
-          Row(
-            children: [
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add_shopping_cart),
-                label: const Text('New Sale Order'),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
-                ),
-                style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add_business),
-                label: const Text('New Purchase Order'),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
-                ),
-                style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add_box),
-                label: const Text('New Product'),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProductsScreen()),
-                ),
-                style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.analytics),
-                label: const Text('Bin Analytics'),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ClientBinAnalyticsScreen()),
-                ),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 800) {
+                // Desktop layout - horizontal row
+                return Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('New Sale Order'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_business),
+                        label: const Text('New Purchase Order'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_box),
+                        label: const Text('New Product'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.analytics),
+                        label: const Text('Bin Analytics'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ClientBinAnalyticsScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              } else if (constraints.maxWidth > 600) {
+                // Tablet layout - 2x2 grid
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('New Sale Order'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add_business),
+                            label: const Text('New Purchase Order'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add_box),
+                            label: const Text('New Product'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.analytics),
+                            label: const Text('Bin Analytics'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ClientBinAnalyticsScreen()),
+                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              } else {
+                // Mobile layout - vertical column
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('New Sale Order'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_business),
+                        label: const Text('New Purchase Order'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_box),
+                        label: const Text('New Product'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.analytics),
+                        label: const Text('Bin Analytics'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ClientBinAnalyticsScreen()),
+                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              }
+            },
           ),
           const SizedBox(height: 24),
 
@@ -559,8 +702,10 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
 
           // Products Overview
           _buildProductsOverview(),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -636,44 +781,100 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
     
     final metrics = demoAnalytics!['metrics'] as Map<String, dynamic>? ?? {};
     
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            'Total Orders',
-            metrics['totalOrders']?.toString() ?? '0',
-            Icons.shopping_cart,
-            Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            'Total Revenue',
-            '\$${metrics['totalRevenue']?.toStringAsFixed(2) ?? '0.00'}',
-            Icons.attach_money,
-            Colors.green,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            'Avg Order Value',
-            '\$${metrics['averageOrderValue']?.toStringAsFixed(2) ?? '0.00'}',
-            Icons.trending_up,
-            Colors.orange,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            'Fulfillment Rate',
-            '${((metrics['fulfillmentRate'] ?? 0) * 100).toStringAsFixed(0)}%',
-            Icons.check_circle,
-            Colors.purple,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 600) {
+          // Desktop/Tablet layout - horizontal row
+          return Row(
+            children: [
+              Expanded(
+                child: _buildMetricCard(
+                  'Total Orders',
+                  metrics['totalOrders']?.toString() ?? '0',
+                  Icons.shopping_cart,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  'Total Revenue',
+                  '\$${metrics['totalRevenue']?.toStringAsFixed(2) ?? '0.00'}',
+                  Icons.attach_money,
+                  Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  'Avg Order Value',
+                  '\$${metrics['averageOrderValue']?.toStringAsFixed(2) ?? '0.00'}',
+                  Icons.trending_up,
+                  Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  'Fulfillment Rate',
+                  '${((metrics['fulfillmentRate'] ?? 0) * 100).toStringAsFixed(0)}%',
+                  Icons.check_circle,
+                  Colors.purple,
+                ),
+              ),
+            ],
+          );
+        } else {
+          // Mobile layout - 2x2 grid
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      'Total Orders',
+                      metrics['totalOrders']?.toString() ?? '0',
+                      Icons.shopping_cart,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      'Total Revenue',
+                      '\$${metrics['totalRevenue']?.toStringAsFixed(2) ?? '0.00'}',
+                      Icons.attach_money,
+                      Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      'Avg Order Value',
+                      '\$${metrics['averageOrderValue']?.toStringAsFixed(2) ?? '0.00'}',
+                      Icons.trending_up,
+                      Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      'Fulfillment Rate',
+                      '${((metrics['fulfillmentRate'] ?? 0) * 100).toStringAsFixed(0)}%',
+                      Icons.check_circle,
+                      Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+      },
     );
   }
 
@@ -735,6 +936,8 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
   Widget _buildOrderTile(Map<String, dynamic> order) {
     final status = order['status'] as String? ?? 'unknown';
     final statusColor = _getStatusColor(status);
+    final queuePosition = order['queuePosition'] as int?;
+    final averageShipTime = order['averageShipTime'] as int?;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -777,7 +980,7 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  status.toUpperCase(),
+                  _getStatusDisplayText(status, queuePosition),
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 12,
@@ -786,6 +989,16 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                 ),
               ),
               const SizedBox(height: 4),
+              if (status == 'processing' && averageShipTime != null)
+                Text(
+                  'Avg ship time: ${_formatShipTime(averageShipTime)}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              const SizedBox(height: 2),
               Text(
                 _formatDate(order['createdAt']),
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -795,6 +1008,38 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
         ],
       ),
     );
+  }
+
+  String _getStatusDisplayText(String status, int? queuePosition) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'PENDING';
+      case 'processing':
+        if (queuePosition != null) {
+          return '$queuePosition IN LINE TO BE SHIPPED';
+        }
+        return 'PROCESSING';
+      case 'shipped':
+        return 'SHIPPED';
+      case 'delivered':
+        return 'DELIVERED';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  String _formatShipTime(int minutes) {
+    if (minutes < 60) {
+      return '${minutes} MIN';
+    } else {
+      final hours = minutes ~/ 60;
+      final remainingMinutes = minutes % 60;
+      if (remainingMinutes == 0) {
+        return '${hours} HOUR${hours > 1 ? 'S' : ''}';
+      } else {
+        return '${hours}H ${remainingMinutes}M';
+      }
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -843,25 +1088,133 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
     final salesTrend = demoAnalytics!['salesTrend'] as List<dynamic>? ?? [];
     
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Sales Trend',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.trending_up,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Sales Trend',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Last 7 Days',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 200,
+              height: 220,
               child: LineChart(
                 LineChartData(
-                  gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(show: false),
-                  borderData: FlBorderData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: true,
+                    horizontalInterval: 1,
+                    verticalInterval: 1,
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: Colors.grey.shade200,
+                        strokeWidth: 1,
+                      );
+                    },
+                    getDrawingVerticalLine: (value) {
+                      return FlLine(
+                        color: Colors.grey.shade200,
+                        strokeWidth: 1,
+                      );
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            '\$${value.toInt()}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        getTitlesWidget: (value, meta) {
+                          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                          final index = value.toInt();
+                          if (index >= 0 && index < days.length) {
+                            return Text(
+                              days[index],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          }
+                          return const SizedBox();
+                        },
+                      ),
+                    ),
+                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
                   lineBarsData: [
                     LineChartBarData(
                       spots: salesTrend.isNotEmpty 
@@ -876,13 +1229,59 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                             FlSpot(6, 120),
                           ],
                       isCurved: true,
-                      color: kPastelOrange,
+                      color: Colors.blue.shade600,
                       barWidth: 4,
-                      dotData: FlDotData(show: false),
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 4,
+                            color: Colors.blue.shade600,
+                            strokeWidth: 2,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: Colors.blue.shade50,
+                      ),
                     ),
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Revenue Trend',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Peak: \$1,200',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green.shade600,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -898,47 +1297,173 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
     final salesByPlatform = demoAnalytics!['salesByPlatform'] as Map<String, dynamic>? ?? {};
     
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Sales by Platform',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.pie_chart,
+                    color: Colors.purple.shade600,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Sales by Platform',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'This Month',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 200,
+              height: 220,
               child: PieChart(
                 PieChartData(
                   sections: [
                     PieChartSectionData(
                       value: (salesByPlatform['shopify'] as double? ?? 0.7) * 100, 
-                      color: kPastelOrange, 
-                      title: 'Shopify'
+                      color: Colors.blue.shade600, 
+                      title: 'Shopify\n70%',
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 80,
+                      titlePositionPercentageOffset: 0.6,
                     ),
                     PieChartSectionData(
                       value: (salesByPlatform['instagram'] as double? ?? 0.2) * 100, 
-                      color: Colors.orangeAccent, 
-                      title: 'Instagram'
+                      color: Colors.pink.shade600, 
+                      title: 'Instagram\n20%',
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 80,
+                      titlePositionPercentageOffset: 0.6,
                     ),
                     PieChartSectionData(
                       value: (salesByPlatform['tiktok'] as double? ?? 0.1) * 100, 
-                      color: Colors.deepOrangeAccent, 
-                      title: 'TikTok'
+                      color: Colors.red.shade600, 
+                      title: 'TikTok\n10%',
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 80,
+                      titlePositionPercentageOffset: 0.6,
                     ),
                   ],
                   sectionsSpace: 2,
-                  centerSpaceRadius: 30,
+                  centerSpaceRadius: 50,
+                  centerSpaceColor: Colors.white,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      // Handle touch events if needed
+                    },
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            // Legend
+            Column(
+              children: [
+                _buildLegendItem('Shopify', Colors.blue.shade600, '70%', '\$12,915'),
+                const SizedBox(height: 8),
+                _buildLegendItem('Instagram', Colors.pink.shade600, '20%', '\$3,690'),
+                const SizedBox(height: 8),
+                _buildLegendItem('TikTok', Colors.red.shade600, '10%', '\$1,845'),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLegendItem(String platform, Color color, String percentage, String amount) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            platform,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Text(
+          percentage,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1109,38 +1634,95 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Quick Add menu for clients
-        Row(
-          children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_shopping_cart),
-              label: const Text('New Sale Order'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
-              ),
-              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_business),
-              label: const Text('New Purchase Order'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
-              ),
-              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_box),
-              label: const Text('New Product'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProductsScreen()),
-              ),
-              style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth > 600) {
+              // Desktop layout - horizontal row
+              return Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_shopping_cart),
+                      label: const Text('New Sale Order'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_business),
+                      label: const Text('New Purchase Order'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_box),
+                      label: const Text('New Product'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              // Mobile layout - vertical column
+              return Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_shopping_cart),
+                      label: const Text('New Sale Order'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NewSaleOrderScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_business),
+                      label: const Text('New Purchase Order'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NewPurchaseOrderScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add_box),
+                      label: const Text('New Product'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPastelOrange, foregroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
         const SizedBox(height: 24),
         Expanded(

@@ -19,6 +19,9 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
   List<Map<String, dynamic>> availableBins = [];
   bool isLoading = true;
   String searchQuery = '';
+  bool isMenuCollapsed = false;
+  bool isWarehouseOperationsCollapsed = false;
+  bool isSummaryCardsCollapsed = false;
 
   @override
   void initState() {
@@ -196,25 +199,35 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
           
           // Client List and Details
           Expanded(
-            child: Row(
-              children: [
-                // Client List
-                Expanded(
-                  flex: 2,
-                  child: _buildClientList(),
+            child: selectedClient == null 
+              ? _buildClientList() // Full width when no client selected
+              : Row(
+                  children: [
+                    // Collapsible Client List
+                    if (!isMenuCollapsed)
+                      SizedBox(
+                        width: 320,
+                        child: _buildClientList(),
+                      ),
+                    
+                    // Client Details (takes remaining space)
+                    Expanded(
+                      child: _buildClientDetails(),
+                    ),
+                  ],
                 ),
-                
-                // Client Details
-                if (selectedClient != null)
-                  Expanded(
-                    flex: 3,
-                    child: _buildClientDetails(),
-                  ),
-              ],
-            ),
           ),
         ],
       ),
+      // Floating action button to show menu when collapsed
+      floatingActionButton: isMenuCollapsed && selectedClient != null
+          ? FloatingActionButton(
+              onPressed: () => setState(() => isMenuCollapsed = false),
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.menu, color: Colors.white),
+              tooltip: 'Show Client Menu',
+            )
+          : null,
     );
   }
 
@@ -227,11 +240,24 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
       margin: const EdgeInsets.all(8),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Clients',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                const Text(
+                  'Clients',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => setState(() => isMenuCollapsed = !isMenuCollapsed),
+                  icon: Icon(
+                    isMenuCollapsed ? Icons.menu : Icons.close,
+                    color: Colors.blue,
+                  ),
+                  tooltip: isMenuCollapsed ? 'Show Menu' : 'Hide Menu',
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -332,6 +358,13 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
                     ],
                   ),
                 ),
+                // Menu toggle button when collapsed
+                if (isMenuCollapsed)
+                  IconButton(
+                    onPressed: () => setState(() => isMenuCollapsed = false),
+                    icon: const Icon(Icons.menu),
+                    tooltip: 'Show Client Menu',
+                  ),
                 IconButton(
                   onPressed: () => _showAssignBinDialog(),
                   icon: const Icon(Icons.add_location),
@@ -435,63 +468,96 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
 
     return Column(
       children: [
-        // Summary Cards
-        Padding(
+        // Quick Actions Bar
+        Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+          ),
           child: Row(
             children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  'Assigned Bins',
-                  clientWarehouseItems.length.toString(),
-                  Icons.inventory_2,
-                  Colors.blue,
+              Icon(Icons.warehouse, color: Colors.blue.shade700),
+              const SizedBox(width: 12),
+              const Text(
+                'Warehouse Operations',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              // Summary Cards collapse/expand toggle button
+              IconButton(
+                onPressed: () => setState(() => isSummaryCardsCollapsed = !isSummaryCardsCollapsed),
+                icon: Icon(
+                  isSummaryCardsCollapsed ? Icons.expand_more : Icons.expand_less,
+                  color: Colors.blue.shade700,
+                ),
+                tooltip: isSummaryCardsCollapsed ? 'Show Summary' : 'Hide Summary',
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showAssignBinDialog(),
+                icon: const Icon(Icons.add_location),
+                label: const Text('Assign Bins'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Total Items',
-                  clientWarehouseItems.fold<int>(0, (sum, item) => sum + ((item['currentStock'] ?? 0) as int)).toString(),
-                  Icons.shopping_bag,
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Available Bins',
-                  availableBins.length.toString(),
-                  Icons.add_location,
-                  Colors.orange,
-                ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _refreshWarehouseData(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
               ),
             ],
           ),
         ),
         
-        // Warehouse Blueprint View
-        Expanded(
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
+        // Summary Cards (collapsible)
+        if (!isSummaryCardsCollapsed)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                const TabBar(
-                  tabs: [
-                    Tab(text: 'Client Bins', icon: Icon(Icons.person)),
-                    Tab(text: 'All Bins', icon: Icon(Icons.warehouse)),
-                  ],
-                ),
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildClientBinsView(),
-                      _buildAllBinsView(),
-                    ],
+                  child: _buildSummaryCard(
+                    'Total Bins',
+                    '24', // This will be updated when bins are loaded
+                    Icons.warehouse,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildSummaryCard(
+                    'Available',
+                    availableBins.length.toString(),
+                    Icons.add_location,
+                    Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildSummaryCard(
+                    'Assigned',
+                    '0', // This will be updated when bins are loaded
+                    Icons.check_circle,
+                    Colors.orange,
                   ),
                 ),
               ],
             ),
+          ),
+        
+        // All Bins Grid View (always visible)
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: _buildAllBinsGridView(),
           ),
         ),
       ],
@@ -865,6 +931,173 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
     );
   }
 
+  Future<void> _refreshWarehouseData() async {
+    if (selectedClient != null) {
+      await _selectClient(selectedClient!);
+    }
+  }
+
+  Widget _buildAllBinsGridView() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadAllBins(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.warehouse, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No warehouse blueprint found',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Create a warehouse blueprint first',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final allBins = snapshot.data!;
+        
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 6, // Increased from 4 to 6 for more bins per row
+              childAspectRatio: 1.0, // Slightly more square bins
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: allBins.length,
+            itemBuilder: (context, index) {
+              final bin = allBins[index];
+              final isFilled = bin['isFilled'] ?? false;
+              final currentStock = bin['currentStock'] ?? 0;
+              final capacity = bin['capacity'] ?? 0;
+              final utilization = capacity > 0 ? (currentStock / capacity) : 0.0;
+              
+              return Card(
+                elevation: isFilled ? 3 : 1,
+                color: isFilled ? Colors.green.shade50 : Colors.blue.shade50,
+                child: InkWell(
+                  onTap: isFilled ? null : () => _assignSpecificBin(bin),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Compact Bin Location
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isFilled ? Colors.green : Colors.blue,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Z${bin['zone']}A${bin['aisle']}S${bin['shelf']}B${bin['bin']}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // Compact Status with Icon
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isFilled ? Icons.check_circle : Icons.radio_button_unchecked,
+                              size: 12,
+                              color: isFilled ? Colors.green : Colors.blue,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isFilled ? 'Used' : 'Free',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isFilled ? Colors.green.shade700 : Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        if (isFilled && capacity > 0) ...[
+                          const SizedBox(height: 4),
+                          // Compact utilization bar
+                          Container(
+                            height: 3,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: utilization,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: utilization > 0.8 ? Colors.red : 
+                                         utilization > 0.5 ? Colors.orange : Colors.green,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${currentStock}/${capacity}',
+                            style: const TextStyle(fontSize: 8, color: Colors.grey),
+                          ),
+                        ] else if (!isFilled) ...[
+                          const SizedBox(height: 4),
+                          Icon(
+                            Icons.add_circle_outline,
+                            color: Colors.blue.shade400,
+                            size: 16,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _assignSpecificBin(Map<String, dynamic> bin) {
+    showDialog(
+      context: context,
+      builder: (context) => _AssignBinDialog(
+        availableBins: [bin],
+        onAssign: _assignBinToClient,
+        preselectedBin: bin['id'],
+        selectedClient: selectedClient,
+      ),
+    );
+  }
+
   void _showAssignBinDialog() async {
     // Refresh available bins first
     final bins = await _loadAvailableBins();
@@ -888,6 +1121,7 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
       builder: (context) => _AssignBinDialog(
         availableBins: availableBins,
         onAssign: _assignBinToClient,
+        selectedClient: selectedClient,
       ),
     );
   }
@@ -896,10 +1130,14 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
 class _AssignBinDialog extends StatefulWidget {
   final List<Map<String, dynamic>> availableBins;
   final Function(String binId, String productId, int quantity) onAssign;
+  final String? preselectedBin;
+  final Map<String, dynamic>? selectedClient;
 
   const _AssignBinDialog({
     required this.availableBins,
     required this.onAssign,
+    this.preselectedBin,
+    this.selectedClient,
   });
 
   @override
@@ -910,6 +1148,12 @@ class _AssignBinDialogState extends State<_AssignBinDialog> {
   String? selectedBinId;
   final TextEditingController _productIdController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    selectedBinId = widget.preselectedBin ?? (widget.availableBins.isNotEmpty ? widget.availableBins.first['id'] : null);
+  }
 
   @override
   void dispose() {
@@ -923,51 +1167,41 @@ class _AssignBinDialogState extends State<_AssignBinDialog> {
     return AlertDialog(
       title: const Text('Assign Bin to Client'),
       content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              value: selectedBinId,
-              decoration: const InputDecoration(labelText: 'Select Bin'),
-              items: widget.availableBins.map((bin) {
-                return DropdownMenuItem<String>(
-                  value: bin['id'],
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Z${bin['zone']}-A${bin['aisle']}-S${bin['shelf']}-B${bin['bin']}'),
-                      Text(
-                        'Capacity: ${bin['capacity'] ?? 0} items',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) => setState(() => selectedBinId = value),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _productIdController,
-              decoration: const InputDecoration(
-                labelText: 'Product ID',
-                hintText: 'Enter the product identifier',
+        width: 500,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Bin Selection
+              DropdownButtonFormField<String>(
+                value: selectedBinId,
+                decoration: const InputDecoration(
+                  labelText: 'Select Bin',
+                  hintText: 'Choose a bin to assign',
+                ),
+                items: widget.availableBins.map((bin) {
+                  return DropdownMenuItem<String>(
+                    value: bin['id'],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Z${bin['zone']}-A${bin['aisle']}-S${bin['shelf']}-B${bin['bin']}'),
+                        Text(
+                          'Capacity: ${bin['capacity'] ?? 0} items',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => selectedBinId = value),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _quantityController,
-              decoration: const InputDecoration(
-                labelText: 'Initial Quantity',
-                hintText: 'How many items to place in this bin',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            if (selectedBinId != null) ...[
-              const SizedBox(height: 16),
+              
+              const SizedBox(height: 20),
+              
+              // Product Information Section
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -976,19 +1210,111 @@ class _AssignBinDialogState extends State<_AssignBinDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Bin Information:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Row(
+                      children: [
+                        Icon(Icons.inventory, color: Colors.blue.shade700),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Product Information',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text('Location: Z${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['zone']}-A${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['aisle']}-S${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['shelf']}-B${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['bin']}'),
-                    Text('Capacity: ${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['capacity'] ?? 0} items'),
-                    Text('Status: Available for assignment'),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _productIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Product ID/SKU',
+                        hintText: 'Enter the product identifier (e.g., BENNY-001)',
+                        prefixIcon: Icon(Icons.qr_code),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _quantityController,
+                      decoration: const InputDecoration(
+                        labelText: 'Initial Quantity',
+                        hintText: 'How many items to place in this bin',
+                        prefixIcon: Icon(Icons.inventory_2),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Bin Information
+              if (selectedBinId != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, color: Colors.green.shade700),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Bin Information',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildInfoRow('Location', 'Z${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['zone']}-A${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['aisle']}-S${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['shelf']}-B${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['bin']}'),
+                      _buildInfoRow('Capacity', '${widget.availableBins.firstWhere((b) => b['id'] == selectedBinId)['capacity'] ?? 0} items'),
+                      _buildInfoRow('Status', 'Available for assignment'),
+                      _buildInfoRow('Client', widget.selectedClient?['name'] ?? widget.selectedClient?['email'] ?? 'Unknown'),
+                    ],
+                  ),
+                ),
+              ],
+              
+              const SizedBox(height: 20),
+              
+              // Packer Instructions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info, color: Colors.orange.shade700),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Packer Instructions',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'This information will be used by packers to:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('• Locate the exact bin position in the warehouse'),
+                    const Text('• Identify the correct product to pick'),
+                    const Text('• Know the quantity available in the bin'),
+                    const Text('• Track inventory levels for reordering'),
                   ],
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
       actions: [
@@ -1009,9 +1335,40 @@ class _AssignBinDialogState extends State<_AssignBinDialog> {
                   Navigator.pop(context);
                 }
               : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Assign Bin'),
         ),
       ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -122,21 +122,20 @@ class _WarehouseLocationsScreenState extends State<WarehouseLocationsScreen> {
         batch.delete(doc.reference);
       }
       
-      // Save new blueprint
+      // Save new blueprint - save ALL bins (both filled and unfilled)
       for (var zone in blueprint) {
         for (var aisle in zone) {
           for (var shelf in aisle) {
             for (var cell in shelf) {
-              if (cell.isFilled) {
-                final ref = FirebaseFirestore.instance.collection('locations').doc();
-                batch.set(ref, {
-                  ...cell.toMap(),
-                  'binId': ref.id,
-                  'productId': null, // Will be set when a product is assigned
-                  'createdAt': FieldValue.serverTimestamp(),
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
-              }
+              final ref = FirebaseFirestore.instance.collection('locations').doc();
+              batch.set(ref, {
+                ...cell.toMap(),
+                'binId': ref.id,
+                'productId': cell.isFilled ? cell.productId : null,
+                'clientId': cell.isFilled ? cell.clientId : null,
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
             }
           }
         }
@@ -493,6 +492,8 @@ class LocationCell {
   int currentStock;
   String status;
   bool isFilled;
+  String? productId;
+  String? clientId;
   LocationCell({
     required this.zone,
     required this.aisle,
@@ -502,6 +503,8 @@ class LocationCell {
     this.currentStock = 0,
     this.status = 'active',
     this.isFilled = false,
+    this.productId,
+    this.clientId,
   });
   Map<String, dynamic> toMap() => {
     'zone': zone + 1,
@@ -511,10 +514,20 @@ class LocationCell {
     'capacity': capacity,
     'currentStock': currentStock,
     'status': status,
+    'isFilled': isFilled,
+    'productId': productId,
+    'clientId': clientId,
     'createdAt': FieldValue.serverTimestamp(),
     'updatedAt': FieldValue.serverTimestamp(),
   };
-  LocationCell copyWith({int? capacity, int? currentStock, String? status, bool? isFilled}) => LocationCell(
+  LocationCell copyWith({
+    int? capacity, 
+    int? currentStock, 
+    String? status, 
+    bool? isFilled,
+    String? productId,
+    String? clientId,
+  }) => LocationCell(
     zone: zone,
     aisle: aisle,
     shelf: shelf,
@@ -523,6 +536,8 @@ class LocationCell {
     currentStock: currentStock ?? this.currentStock,
     status: status ?? this.status,
     isFilled: isFilled ?? this.isFilled,
+    productId: productId ?? this.productId,
+    clientId: clientId ?? this.clientId,
   );
 }
 
