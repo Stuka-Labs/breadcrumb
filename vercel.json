@@ -3,11 +3,6 @@
   "buildCommand": "cd breadcrumb && npm run build",
   "installCommand": "cd breadcrumb && npm install",
   "outputDirectory": "breadcrumb/build",
-  "functions": {
-    "breadcrumb/server.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
