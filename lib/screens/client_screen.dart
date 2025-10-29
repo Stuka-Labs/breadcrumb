@@ -1117,28 +1117,34 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Sales Trend',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Sales Trend',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Last 7 Days',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w500,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Last 7 Days',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -1171,14 +1177,16 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 40,
+                        reservedSize: 35,
                         getTitlesWidget: (value, meta) {
-                          return Text(
-                            '\$${value.toInt()}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                          return FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '\$${value.toInt()}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           );
                         },
@@ -1187,17 +1195,19 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 30,
+                        reservedSize: 25,
                         getTitlesWidget: (value, meta) {
                           const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                           final index = value.toInt();
                           if (index >= 0 && index < days.length) {
-                            return Text(
-                              days[index],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                            return FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                days[index],
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             );
                           }
@@ -1326,28 +1336,34 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Sales by Platform',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Sales by Platform',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'This Month',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w500,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'This Month',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -1436,7 +1452,8 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(
+        Flexible(
+          flex: 2,
           child: Text(
             platform,
             style: TextStyle(
@@ -1444,23 +1461,38 @@ class _ClientScreenState extends State<ClientScreen> with SingleTickerProviderSt
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w500,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ),
-        Text(
-          percentage,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          flex: 1,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              percentage,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          amount,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade800,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 4),
+        Flexible(
+          flex: 2,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              amount,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade800,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ],

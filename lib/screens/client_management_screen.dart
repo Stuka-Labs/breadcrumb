@@ -285,8 +285,28 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
                             ),
                           ),
                         ),
-                        title: Text(displayName),
-                        subtitle: email.isNotEmpty ? Text(email) : null,
+                        title: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            displayName,
+                            style: const TextStyle(fontSize: 16),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        subtitle: email.isNotEmpty 
+                          ? FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                email,
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            )
+                          : null,
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -346,14 +366,34 @@ class _ClientManagementScreenState extends State<ClientManagementScreen> with Si
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        selectedClient!['name'] ?? selectedClient!['email'] ?? 'Unknown Client',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          return FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              selectedClient!['name'] ?? selectedClient!['email'] ?? 'Unknown Client',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          );
+                        },
                       ),
                       if (selectedClient!['email'] != null && selectedClient!['email'].isNotEmpty)
-                        Text(
-                          selectedClient!['email'],
-                          style: TextStyle(color: Colors.grey.shade600),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                selectedClient!['email'],
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            );
+                          },
                         ),
                     ],
                   ),

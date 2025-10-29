@@ -19,6 +19,10 @@ import 'scan_order_screen.dart';
 import 'new_purchase_order_screen.dart';
 import '../services/benny_data_seeder.dart';
 import '../services/warehouse_demo_seeder.dart';
+import '../services/material_service.dart';
+import 'material_management_screen.dart';
+import 'warehouse_blueprint_screen.dart';
+import '../services/warehouse_service.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -33,12 +37,16 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   String selectedTimePeriod = 'Daily';
   List<Map<String, dynamic>> clients = [];
   bool isLoadingClients = true;
+  Map<String, int> dashboardStats = {};
+  bool isLoadingStats = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
     _loadClients();
+    _loadDashboardStats();
+    _initializeMaterials();
   }
 
   Future<void> _loadClients() async {
@@ -71,6 +79,29 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _loadDashboardStats() async {
+    try {
+      final stats = await WarehouseService.getDashboardStats();
+      setState(() {
+        dashboardStats = stats;
+        isLoadingStats = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading dashboard stats: $e');
+      setState(() {
+        isLoadingStats = false;
+      });
+    }
+  }
+
+  Future<void> _initializeMaterials() async {
+    try {
+      await MaterialService.initializeDefaultMaterials();
+    } catch (e) {
+      debugPrint('Error initializing materials: $e');
+    }
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -94,8 +125,9 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             tooltip: 'Refresh Data',
             onPressed: () {
               setState(() {
-                // This will trigger a rebuild of the charts
+                isLoadingStats = true;
               });
+              _loadDashboardStats();
             },
           ),
           IconButton(
@@ -130,158 +162,471 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade600, Colors.blue.shade800],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.shade200,
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                // Header Section - Responsive
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    bool isMobile = constraints.maxWidth < 600;
+                    
+                    return Container(
+                      padding: EdgeInsets.all(isMobile ? 16 : 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade600, Colors.blue.shade800],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.shade200,
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.dashboard,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Warehouse Dashboard',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Real-time analytics and insights',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Filter Controls
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            DropdownButton<String>(
-                              value: selectedClient,
-                              dropdownColor: Colors.white,
-                              style: const TextStyle(color: Colors.black),
-                              items: [
-                                const DropdownMenuItem(value: 'All Clients', child: Text('All Clients')),
-                                ...clients.map((c) => DropdownMenuItem<String>(
-                                  value: c['id'], 
-                                  child: Text(c['name'])
-                                )).toList(),
+                      child: isMobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.dashboard,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Warehouse Dashboard',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 2,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Real-time analytics and insights',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.9),
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 2,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: DropdownButton<String>(
+                                          value: selectedClient,
+                                          dropdownColor: Colors.white,
+                                          style: const TextStyle(color: Colors.black, fontSize: 14),
+                                          items: [
+                                            const DropdownMenuItem(value: 'All Clients', child: Text('All Clients')),
+                                            ...clients.map((c) => DropdownMenuItem<String>(
+                                              value: c['id'], 
+                                              child: Text(c['name'])
+                                            )).toList(),
+                                          ],
+                                          onChanged: isLoadingClients ? null : (v) => setState(() => selectedClient = v ?? 'All Clients'),
+                                          underline: const SizedBox(),
+                                          isExpanded: true,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: DropdownButton<String>(
+                                          value: selectedTimePeriod,
+                                          dropdownColor: Colors.white,
+                                          style: const TextStyle(color: Colors.black, fontSize: 14),
+                                          items: const [
+                                            DropdownMenuItem(value: 'Daily', child: Text('Daily')),
+                                            DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
+                                            DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                                          ],
+                                          onChanged: (v) => setState(() => selectedTimePeriod = v ?? 'Daily'),
+                                          underline: const SizedBox(),
+                                          isExpanded: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
-                              onChanged: isLoadingClients ? null : (v) => setState(() => selectedClient = v ?? 'All Clients'),
-                            ),
-                            const SizedBox(height: 8),
-                            DropdownButton<String>(
-                              value: selectedTimePeriod,
-                              dropdownColor: Colors.white,
-                              style: const TextStyle(color: Colors.black),
-                              items: const [
-                                DropdownMenuItem(value: 'Daily', child: Text('Daily')),
-                                DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
-                                DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                            )
+                          : Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.dashboard,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Warehouse Dashboard',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Real-time analytics and insights',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Filter Controls
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      DropdownButton<String>(
+                                        value: selectedClient,
+                                        dropdownColor: Colors.white,
+                                        style: const TextStyle(color: Colors.black),
+                                        items: [
+                                          const DropdownMenuItem(value: 'All Clients', child: Text('All Clients')),
+                                          ...clients.map((c) => DropdownMenuItem<String>(
+                                            value: c['id'], 
+                                            child: Text(c['name'])
+                                          )).toList(),
+                                        ],
+                                        onChanged: isLoadingClients ? null : (v) => setState(() => selectedClient = v ?? 'All Clients'),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      DropdownButton<String>(
+                                        value: selectedTimePeriod,
+                                        dropdownColor: Colors.white,
+                                        style: const TextStyle(color: Colors.black),
+                                        items: const [
+                                          DropdownMenuItem(value: 'Daily', child: Text('Daily')),
+                                          DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
+                                          DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                                        ],
+                                        onChanged: (v) => setState(() => selectedTimePeriod = v ?? 'Daily'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
-                              onChanged: (v) => setState(() => selectedTimePeriod = v ?? 'Daily'),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
                 
                 const SizedBox(height: 32),
                 
-                // Key Metrics Cards
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricCard(
-                        'Total Orders',
-                        '24',
-                        Icons.shopping_cart,
-                        Colors.blue,
-                        '+12%',
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildMetricCard(
-                        'Revenue',
-                        '\$12,450',
-                        Icons.attach_money,
-                        Colors.green,
-                        '+8%',
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildMetricCard(
-                        'Fulfillment Rate',
-                        '94%',
-                        Icons.check_circle,
-                        Colors.orange,
-                        '+3%',
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildMetricCard(
-                        'Active Clients',
-                        '8',
-                        Icons.people,
-                        Colors.purple,
-                        '+2',
-                      ),
-                    ),
-                  ],
+                // Warehouse Operations Metrics - Responsive Layout
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 600) {
+                      // Desktop/Tablet - horizontal row
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Orders Received',
+                              isLoadingStats ? '...' : dashboardStats['ordersReceived']?.toString() ?? '0',
+                              Icons.inbox,
+                              Colors.blue,
+                              'Today',
+                              () => _showDetailedView('Orders Received'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Orders Placed',
+                              isLoadingStats ? '...' : dashboardStats['ordersPlaced']?.toString() ?? '0',
+                              Icons.shopping_cart,
+                              Colors.green,
+                              'Today',
+                              () => _showDetailedView('Orders Placed'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Orders Shipped',
+                              isLoadingStats ? '...' : dashboardStats['ordersShipped']?.toString() ?? '0',
+                              Icons.local_shipping,
+                              Colors.orange,
+                              'Today',
+                              () => _showDetailedView('Orders Shipped'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Waiting to Ship',
+                              isLoadingStats ? '...' : dashboardStats['waitingToShip']?.toString() ?? '0',
+                              Icons.hourglass_empty,
+                              Colors.red,
+                              'Pending',
+                              () => _showDetailedView('Waiting to Ship'),
+                            ),
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Mobile - 2x2 grid
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Orders Received',
+                                  isLoadingStats ? '...' : dashboardStats['ordersReceived']?.toString() ?? '0',
+                                  Icons.inbox,
+                                  Colors.blue,
+                                  'Today',
+                                  () => _showDetailedView('Orders Received'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Orders Placed',
+                                  isLoadingStats ? '...' : dashboardStats['ordersPlaced']?.toString() ?? '0',
+                                  Icons.shopping_cart,
+                                  Colors.green,
+                                  'Today',
+                                  () => _showDetailedView('Orders Placed'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Orders Shipped',
+                                  isLoadingStats ? '...' : dashboardStats['ordersShipped']?.toString() ?? '0',
+                                  Icons.local_shipping,
+                                  Colors.orange,
+                                  'Today',
+                                  () => _showDetailedView('Orders Shipped'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Waiting to Ship',
+                                  isLoadingStats ? '...' : dashboardStats['waitingToShip']?.toString() ?? '0',
+                                  Icons.hourglass_empty,
+                                  Colors.red,
+                                  'Pending',
+                                  () => _showDetailedView('Waiting to Ship'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Second Row - Inventory & Client Metrics
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 600) {
+                      // Desktop/Tablet - horizontal row
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: FutureBuilder<int>(
+                              future: WarehouseService.getTotalInventoryCount(),
+                              builder: (context, snapshot) {
+                                return _buildWarehouseMetricCard(
+                                  'Current Inventory',
+                                  snapshot.hasData ? snapshot.data.toString() : '...',
+                                  Icons.inventory_2,
+                                  Colors.purple,
+                                  'Items',
+                                  () => _showDetailedView('Current Inventory'),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Low Stock Alerts',
+                              isLoadingStats ? '...' : dashboardStats['lowStockAlerts']?.toString() ?? '0',
+                              Icons.warning,
+                              Colors.amber,
+                              'Alerts',
+                              () => _showDetailedView('Low Stock Alerts'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildWarehouseMetricCard(
+                              'Material Stock',
+                              isLoadingStats ? '...' : dashboardStats['materialStockAlerts']?.toString() ?? '0',
+                              Icons.storage,
+                              Colors.teal,
+                              'Boxes/Tape',
+                              () => _showDetailedView('Material Stock'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: FutureBuilder<int>(
+                              future: WarehouseService.getActiveClientCount(),
+                              builder: (context, snapshot) {
+                                return _buildWarehouseMetricCard(
+                                  'Active Clients',
+                                  snapshot.hasData ? snapshot.data.toString() : '...',
+                                  Icons.people,
+                                  Colors.indigo,
+                                  'Connected',
+                                  () => _showDetailedView('Active Clients'),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Mobile - 2x2 grid
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FutureBuilder<int>(
+                                  future: WarehouseService.getTotalInventoryCount(),
+                                  builder: (context, snapshot) {
+                                    return _buildWarehouseMetricCard(
+                                      'Current Inventory',
+                                      snapshot.hasData ? snapshot.data.toString() : '...',
+                                      Icons.inventory_2,
+                                      Colors.purple,
+                                      'Items',
+                                      () => _showDetailedView('Current Inventory'),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Low Stock Alerts',
+                                  isLoadingStats ? '...' : dashboardStats['lowStockAlerts']?.toString() ?? '0',
+                                  Icons.warning,
+                                  Colors.amber,
+                                  'Alerts',
+                                  () => _showDetailedView('Low Stock Alerts'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildWarehouseMetricCard(
+                                  'Material Stock',
+                                  isLoadingStats ? '...' : dashboardStats['materialStockAlerts']?.toString() ?? '0',
+                                  Icons.storage,
+                                  Colors.teal,
+                                  'Boxes/Tape',
+                                  () => _showDetailedView('Material Stock'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FutureBuilder<int>(
+                                  future: WarehouseService.getActiveClientCount(),
+                                  builder: (context, snapshot) {
+                                    return _buildWarehouseMetricCard(
+                                      'Active Clients',
+                                      snapshot.hasData ? snapshot.data.toString() : '...',
+                                      Icons.people,
+                                      Colors.indigo,
+                                      'Connected',
+                                      () => _showDetailedView('Active Clients'),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
                 
                 const SizedBox(height: 32),
                 
-                // Charts Section
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Container(
+                // Charts Section - Responsive Layout
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 600) {
+                      // Desktop/Tablet - side by side
+                      return Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -388,6 +733,121 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       ),
                     ),
                   ],
+                );
+                    } else {
+                      // Mobile - stacked vertically
+                      return Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.shade200,
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.trending_up,
+                                        color: Colors.blue.shade600,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Text(
+                                        'Sale Orders ($selectedTimePeriod)',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  height: 200,
+                                  child: _SaleOrdersLineChart(
+                                    selectedClient: selectedClient, 
+                                    timePeriod: selectedTimePeriod,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.shade200,
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.pie_chart,
+                                        color: Colors.green.shade600,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Order Status',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  height: 200,
+                                  child: _SaleOrdersPieChart(
+                                    selectedClient: selectedClient,
+                                    timePeriod: selectedTimePeriod,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
                 
                 const SizedBox(height: 32),
@@ -497,6 +957,18 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () => _seedWarehouseData(),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.storage),
+                  label: const Text('Material Management'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MaterialManagementScreen()),
+                  ),
                 ),
               ],
             ),
@@ -629,13 +1101,13 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                       ),
                     ),
                     _buildWarehouseCard(
-                      'Warehouse Layout',
-                      'Configure warehouse zones and bins',
+                      'Warehouse Blueprint',
+                      'Design and configure warehouse layout',
                       Icons.location_on,
                       Colors.red,
                       () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const WarehouseLocationsScreen()),
+                        MaterialPageRoute(builder: (context) => const WarehouseBlueprintScreen()),
                       ),
                     ),
                     _buildWarehouseCard(
@@ -1071,6 +1543,84 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
+  Widget _buildWarehouseMetricCard(String title, String value, IconData icon, Color color, String subtitle, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 24,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: color.withOpacity(0.6),
+                  size: 16,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: color.withOpacity(0.7),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMetricCard(String title, String value, IconData icon, Color color, String change) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1144,6 +1694,508 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           ),
         ],
       ),
+    );
+  }
+
+  void _showDetailedView(String metricType) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('$metricType Details'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: _buildDetailedViewContent(metricType),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailedViewContent(String metricType) {
+    switch (metricType) {
+      case 'Orders Received':
+        return _buildOrdersReceivedView();
+      case 'Orders Placed':
+        return _buildOrdersPlacedView();
+      case 'Orders Shipped':
+        return _buildOrdersShippedView();
+      case 'Waiting to Ship':
+        return _buildWaitingToShipView();
+      case 'Current Inventory':
+        return _buildCurrentInventoryView();
+      case 'Low Stock Alerts':
+        return _buildLowStockAlertsView();
+      case 'Material Stock':
+        return _buildMaterialStockView();
+      case 'Active Clients':
+        return _buildActiveClientsView();
+      default:
+        return const Center(child: Text('No data available'));
+    }
+  }
+
+  Widget _buildOrdersReceivedView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('orders')
+          .where('status', isEqualTo: 'received')
+          .orderBy('createdAt', descending: true)
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No orders received today'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final order = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.inbox, color: Colors.blue),
+              title: Text(order['orderNumber'] ?? 'Unknown Order'),
+              subtitle: Text('Customer: ${order['customerName'] ?? 'Unknown'}'),
+              trailing: Text(order['totalPrice']?.toString() ?? '0'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOrdersPlacedView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('saleOrders')
+          .where('status', isEqualTo: 'open')
+          .orderBy('createdAt', descending: true)
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No orders placed today'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final order = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.shopping_cart, color: Colors.green),
+              title: Text(order['orderNumber'] ?? 'Unknown Order'),
+              subtitle: Text('Customer: ${order['customerName'] ?? 'Unknown'}'),
+              trailing: Text('\$${order['total']?.toString() ?? '0'}'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOrdersShippedView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('orders')
+          .where('status', isEqualTo: 'shipped')
+          .orderBy('shippedAt', descending: true)
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No orders shipped today'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final order = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.local_shipping, color: Colors.orange),
+              title: Text(order['orderNumber'] ?? 'Unknown Order'),
+              subtitle: Text('Customer: ${order['customerName'] ?? 'Unknown'}'),
+              trailing: Text(order['trackingNumber'] ?? 'No tracking'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildWaitingToShipView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('orders')
+          .where('status', isEqualTo: 'ready_to_ship')
+          .orderBy('packedAt', descending: true)
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No orders waiting to ship'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final order = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.hourglass_empty, color: Colors.red),
+              title: Text(order['orderNumber'] ?? 'Unknown Order'),
+              subtitle: Text('Customer: ${order['customerName'] ?? 'Unknown'}'),
+              trailing: Text('Ready'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCurrentInventoryView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('products')
+          .orderBy('name')
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No inventory items'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final product = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.inventory_2, color: Colors.purple),
+              title: Text(product['name'] ?? 'Unknown Product'),
+              subtitle: Text('SKU: ${product['sku'] ?? 'N/A'}'),
+              trailing: Text('Qty: ${product['quantity']?.toString() ?? '0'}'),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLowStockAlertsView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('products')
+          .where('quantity', isLessThan: 10)
+          .orderBy('quantity')
+          .limit(20)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No low stock alerts'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final product = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            final quantity = product['quantity'] ?? 0;
+            return ListTile(
+              leading: Icon(
+                Icons.warning,
+                color: quantity < 5 ? Colors.red : Colors.amber,
+              ),
+              title: Text(product['name'] ?? 'Unknown Product'),
+              subtitle: Text('SKU: ${product['sku'] ?? 'N/A'}'),
+              trailing: Text(
+                'Qty: $quantity',
+                style: TextStyle(
+                  color: quantity < 5 ? Colors.red : Colors.amber,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMaterialStockView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('materials')
+          .orderBy('name')
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No material tracking set up yet'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final doc = snapshot.data!.docs[index];
+            final material = doc.data() as Map<String, dynamic>;
+            final quantity = material['quantity'] ?? 0;
+            final minQuantity = material['minQuantity'] ?? 10;
+            final isLowStock = quantity <= minQuantity;
+            
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isLowStock ? Colors.red.shade50 : Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.storage,
+                    color: isLowStock ? Colors.red : Colors.teal,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  material['name'] ?? 'Unknown Material',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isLowStock ? Colors.red.shade800 : Colors.black87,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Type: ${material['type'] ?? 'N/A'}'),
+                    if (isLowStock)
+                      Text(
+                        '⚠️ Low Stock Alert!',
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Editable quantity field
+                    SizedBox(
+                      width: 80,
+                      child: TextField(
+                        controller: TextEditingController(text: quantity.toString()),
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isLowStock ? Colors.red : Colors.teal,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isLowStock ? Colors.red : Colors.teal,
+                              width: 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isLowStock ? Colors.red : Colors.teal,
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isLowStock ? Colors.red : Colors.teal,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          isDense: true,
+                        ),
+                        onSubmitted: (value) async {
+                          try {
+                            final newQuantity = int.parse(value);
+                            await MaterialService.updateMaterialQuantity(doc.id, newQuantity);
+                            
+                            // Show success feedback
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${material['name']} quantity updated to $newQuantity'),
+                                backgroundColor: Colors.green,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                            
+                            // Refresh the view
+                            setState(() {});
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error updating quantity: $e'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Quick action buttons
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert,
+                        color: Colors.grey.shade600,
+                        size: 20,
+                      ),
+                      onSelected: (value) async {
+                        switch (value) {
+                          case 'add':
+                            try {
+                              final newQuantity = quantity + 10;
+                              await MaterialService.updateMaterialQuantity(doc.id, newQuantity);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added 10 to ${material['name']}'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              setState(() {});
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            break;
+                          case 'subtract':
+                            try {
+                              final newQuantity = (quantity - 10).clamp(0, double.infinity).toInt();
+                              await MaterialService.updateMaterialQuantity(doc.id, newQuantity);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Subtracted 10 from ${material['name']}'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              setState(() {});
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'add',
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, color: Colors.green),
+                              SizedBox(width: 8),
+                              Text('Add 10'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'subtract',
+                          child: Row(
+                            children: [
+                              Icon(Icons.remove, color: Colors.orange),
+                              SizedBox(width: 8),
+                              Text('Subtract 10'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildActiveClientsView() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'client')
+          .orderBy('name')
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No active clients'));
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final client = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.people, color: Colors.indigo),
+              title: Text(client['name'] ?? client['email'] ?? 'Unknown Client'),
+              subtitle: Text(client['email'] ?? 'No email'),
+              trailing: Icon(
+                Icons.circle,
+                color: client['isActive'] == true ? Colors.green : Colors.grey,
+                size: 12,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breadcrumb - Shopify Integration</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .header p {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+      margin-bottom: 20px;
+    }
+    
+    .card h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 1rem;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      width: 100%;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+      width: auto;
+    }
+    
+    .btn-secondary:hover {
+      background: #667eea;
+      color: white;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    
+    .alert {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .alert-info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    
+    .alert-error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    
+    .alert-success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .link-btn {
+      color: #667eea;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.9rem;
+    }
+    
+    .link-btn:hover {
+      color: #764ba2;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .stat {
+      text-align: center;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .connection-list {
+      list-style: none;
+      margin-top: 15px;
+    }
+    
+    .connection-item {
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .status-active {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status-inactive {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .text-center {
+      text-align: center;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+    
+    .order-item {
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .order-info {
+      flex: 1;
+    }
+    
+    .order-info strong {
+      display: block;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .order-info span {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    .order-price {
+      text-align: right;
+      font-weight: bold;
+      color: #28a745;
+      font-size: 1.1rem;
+    }
+    
+    .order-status {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .webhook-status {
+      background: #e3f2fd;
+      border: 1px solid #bbdefb;
+      color: #1976d2;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+    
+    .webhook-status.active {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+    
+    .webhook-status.inactive {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🍞 Breadcrumb</h1>
+      <p>Connect your Shopify store to your WMS</p>
+    </div>
+    
+    <!-- Login Card -->
+    <div id="login-card" class="card">
+      <h3>🔑 Sign In to Your WMS Account</h3>
+      <p style="margin-bottom: 20px; color: #666;">Enter your WMS credentials to connect your Shopify store</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" required placeholder="your.email@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <div id="login-error" class="alert alert-error hidden"></div>
+        <button type="submit" class="btn" id="login-btn">
+          Sign In to WMS
+        </button>
+      </form>
+      
+      <p class="text-center" style="margin-top: 20px; font-size: 0.9rem; color: #666;">
+        Don't have an account? <a href="https://breadcrumb-bd857.web.app/" target="_blank" class="link-btn">Sign up in WMS</a>
+      </p>
+    </div>
+    
+    <!-- Dashboard Content -->
+    <div id="dashboard" class="hidden">
+      <!-- Auth Status Card -->
+      <div class="card">
+        <h3>🔐 Authentication</h3>
+        <div id="auth-info">
+          <strong>Signed in as:</strong> <span id="user-email"></span>
+          <button class="btn btn-secondary" onclick="signOut()" style="margin-top: 15px; max-width: 200px;">
+            Sign Out
+          </button>
+        </div>
+      </div>
+      
+      <!-- Connection Status -->
+      <div class="card">
+        <h3>🔗 Connected Shopify Stores</h3>
+        <div id="connections-content">
+          <div class="loading">Loading connections...</div>
+        </div>
+        
+        <!-- Connect New Store Button -->
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+          <h4 style="color: #667eea; margin-bottom: 15px;">Connect New Shopify Store</h4>
+          <div class="form-group">
+            <label for="shop-domain">Shopify Store Domain</label>
+            <input type="text" id="shop-domain" placeholder="your-shop.myshopify.com" style="margin-bottom: 10px;">
+            <small style="color: #666; display: block; margin-bottom: 15px;">
+              Enter your Shopify store domain (e.g., your-shop.myshopify.com)
+            </small>
+            <button class="btn" onclick="connectShopifyStore()" id="connect-shopify-btn">
+              🔗 Connect Shopify Store
+            </button>
+          </div>
+          <div id="connect-error" class="alert alert-error hidden"></div>
+        </div>
+      </div>
+      
+      <!-- Stats -->
+      <div class="card">
+        <h3>📊 Statistics</h3>
+        <div id="stats-content" class="stats"></div>
+      </div>
+      
+      <!-- Recent Orders -->
+      <div class="card">
+        <h3>📦 Recent Orders</h3>
+        <div id="orders-content">
+          <div class="loading">Loading orders...</div>
+        </div>
+      </div>
+      
+      <!-- Real-time Sync Status -->
+      <div class="card">
+        <h3>⚡ Real-time Sync Status</h3>
+        <div id="sync-content">
+          <div class="webhook-status" id="webhook-status">
+            <p><strong>Webhook Status:</strong> <span id="webhook-text">Checking...</span></p>
+            <p style="margin-top: 10px;"><strong>Last Sync:</strong> <span id="last-sync">Never</span></p>
+            <p style="margin-top: 10px;"><strong>Orders Today:</strong> <span id="orders-today">0</span></p>
+            <p style="margin-top: 10px;"><strong>Total Orders:</strong> <span id="total-orders">0</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_w0Oa_tWr1xvJLJ0eEI-SHfh-sbG7IsU",
+      authDomain: "breadcrumb-bd857.firebaseapp.com",
+      projectId: "breadcrumb-bd857",
+      storageBucket: "breadcrumb-bd857.firebasestorage.app",
+      messagingSenderId: "892664263258",
+      appId: "1:892664263258:web:dff04dd52b3f0fd11bde63"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const functions = firebase.functions();
+    
+    let currentUser = null;
+    let clientId = null;
+    let realtimeListener = null;
+    
+    // Check if user is already signed in
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        await showDashboard();
+      } else {
+        showLogin();
+      }
+    });
+    
+    // Login form handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('login-btn');
+      const errorDiv = document.getElementById('login-error');
+      
+      errorDiv.classList.add('hidden');
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+      
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // Auth state change handler will show dashboard
+      } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = 'Failed to sign in: ' + (error.message || 'Invalid email or password');
+        errorDiv.classList.remove('hidden');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In to WMS';
+      }
+    });
+    
+    function showLogin() {
+      document.getElementById('login-card').classList.remove('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
+      if (realtimeListener) {
+        realtimeListener();
+        realtimeListener = null;
+      }
+    }
+    
+    async function showDashboard() {
+      document.getElementById('login-card').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      
+      document.getElementById('user-email').textContent = currentUser.email;
+      
+      await loadUserData();
+      setupRealtimeUpdates();
+    }
+    
+    async function signOut() {
+      if (confirm('Are you sure you want to sign out?')) {
+        await auth.signOut();
+        showLogin();
+      }
+    }
+    
+    async function loadUserData() {
+      await Promise.all([
+        loadConnections(),
+        loadStats(),
+        loadOrders(),
+        loadSyncStatus()
+      ]);
+    }
+    
+    async function loadConnections() {
+      try {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        
+        if (!userDoc.exists) {
+          document.getElementById('connections-content').innerHTML = `
+            <div class="alert alert-error">
+              User account not found in WMS. Please create an account first.
+            </div>
+          `;
+          return;
+        }
+        
+        const userData = userDoc.data();
+        clientId = userData.clientId;
+        
+        if (!clientId) {
+          document.getElementById('connections-content').innerHTML = `
+            <div class="alert alert-error">
+              No client ID found. Please contact support.
+            </div>
+          `;
+          return;
+        }
+        
+        // Get shop connections for this client
+        const connectionsSnapshot = await db.collection('shopConnections')
+          .where('clientId', '==', clientId)
+          .get();
+        
+        if (connectionsSnapshot.empty) {
+          document.getElementById('connections-content').innerHTML = `
+            <div class="alert alert-info">
+              <p><strong>No Shopify stores connected yet.</strong></p>
+              <p style="margin-top: 10px; font-size: 0.9rem;">
+                Connect your Shopify store through your WMS dashboard to start syncing orders.
+              </p>
+            </div>
+          `;
+          return;
+        }
+        
+        let html = '<ul class="connection-list">';
+        connectionsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          html += `
+            <li class="connection-item">
+              <div>
+                <strong>${data.shopName || data.shop || 'Unknown Shop'}</strong>
+                <br><span style="font-size: 0.9rem; color: #666;">${data.shop}</span>
+                <br><span style="font-size: 0.85rem; color: #666;">
+                  Connected: ${new Date(data.connectedAt).toLocaleDateString()}
+                </span>
+              </div>
+              <span class="status-badge ${data.status === 'active' ? 'status-active' : 'status-inactive'}">
+                ${data.status || 'inactive'}
+              </span>
+            </li>
+          `;
+        });
+        html += '</ul>';
+        document.getElementById('connections-content').innerHTML = html;
+        
+      } catch (error) {
+        console.error('Error loading connections:', error);
+        document.getElementById('connections-content').innerHTML = `
+          <div class="alert alert-error">
+            Error loading connections: ${error.message}
+          </div>
+        `;
+      }
+    }
+    
+    async function loadStats() {
+      try {
+        if (!clientId) return;
+        
+        const clientDoc = await db.collection('clients').doc(clientId).get();
+        if (!clientDoc.exists) return;
+        
+        const stats = clientDoc.data().stats || {};
+        
+        document.getElementById('stats-content').innerHTML = `
+          <div class="stat">
+            <div class="stat-number">${stats.orders || 0}</div>
+            <div class="stat-label">Total Orders</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">${stats.products || 0}</div>
+            <div class="stat-label">Products</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">$${parseFloat(stats.totalRevenue || 0).toFixed(2)}</div>
+            <div class="stat-label">Total Revenue</div>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        document.getElementById('stats-content').innerHTML = `
+          <div class="alert alert-info">Unable to load statistics</div>
+        `;
+      }
+    }
+    
+    async function loadOrders() {
+      try {
+        if (!clientId) return;
+        
+        const ordersSnapshot = await db.collection('orders')
+          .where('clientId', '==', clientId)
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .get();
+        
+        if (ordersSnapshot.empty) {
+          document.getElementById('orders-content').innerHTML = `
+            <div class="alert alert-info">
+              No orders yet. Orders will appear here when they are synced from your Shopify store.
+            </div>
+          `;
+          return;
+        }
+        
+        let html = '<ul class="connection-list">';
+        ordersSnapshot.forEach((doc) => {
+          const order = doc.data();
+          html += `
+            <li class="order-item">
+              <div class="order-info">
+                <strong>Order #${order.shopifyOrderNumber || order.shopifyOrderId || 'N/A'}</strong>
+                <br><span style="font-size: 0.9rem; color: #666;">${order.customerName || 'Guest'}</span>
+                <br><span style="font-size: 0.85rem; color: #666;">
+                  ${new Date(order.createdAt).toLocaleString()}
+                </span>
+              </div>
+              <div class="order-price">
+                $${parseFloat(order.totalPrice || 0).toFixed(2)}
+                <div class="order-status">${order.status || 'unfulfilled'}</div>
+              </div>
+            </li>
+          `;
+        });
+        html += '</ul>';
+        document.getElementById('orders-content').innerHTML = html;
+        
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        document.getElementById('orders-content').innerHTML = `
+          <div class="alert alert-info">Unable to load orders</div>
+        `;
+      }
+    }
+    
+    async function loadSyncStatus() {
+      try {
+        if (!clientId) return;
+        
+        // Get the most recent order to determine last sync
+        const recentOrderSnapshot = await db.collection('orders')
+          .where('clientId', '==', clientId)
+          .orderBy('createdAt', 'desc')
+          .limit(1)
+          .get();
+        
+        if (!recentOrderSnapshot.empty) {
+          const lastOrder = recentOrderSnapshot.docs[0].data();
+          document.getElementById('last-sync').textContent = new Date(lastOrder.createdAt).toLocaleString();
+        }
+        
+        // Count orders today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayOrdersSnapshot = await db.collection('orders')
+          .where('clientId', '==', clientId)
+          .where('createdAt', '>=', today)
+          .get();
+        
+        document.getElementById('orders-today').textContent = todayOrdersSnapshot.size;
+        
+        // Count total orders
+        const totalOrdersSnapshot = await db.collection('orders')
+          .where('clientId', '==', clientId)
+          .get();
+        
+        document.getElementById('total-orders').textContent = totalOrdersSnapshot.size;
+        
+        // Check webhook status
+        const connectionsSnapshot = await db.collection('shopConnections')
+          .where('clientId', '==', clientId)
+          .where('status', '==', 'active')
+          .get();
+        
+        const webhookStatus = document.getElementById('webhook-status');
+        const webhookText = document.getElementById('webhook-text');
+        
+        if (connectionsSnapshot.empty) {
+          webhookText.textContent = 'No active connections';
+          webhookStatus.className = 'webhook-status inactive';
+        } else {
+          webhookText.textContent = `${connectionsSnapshot.size} active connection(s)`;
+          webhookStatus.className = 'webhook-status active';
+        }
+        
+      } catch (error) {
+        console.error('Error loading sync status:', error);
+      }
+    }
+    
+    function setupRealtimeUpdates() {
+      if (!clientId) return;
+      
+      // Listen for new orders in real-time
+      realtimeListener = db.collection('orders')
+        .where('clientId', '==', clientId)
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .onSnapshot((snapshot) => {
+          if (!snapshot.empty) {
+            // New order detected, refresh the data
+            loadOrders();
+            loadSyncStatus();
+          }
+        }, (error) => {
+          console.error('Realtime listener error:', error);
+        });
+    }
+    
+    async function connectShopifyStore() {
+      const shopDomain = document.getElementById('shop-domain').value.trim();
+      const connectBtn = document.getElementById('connect-shopify-btn');
+      const errorDiv = document.getElementById('connect-error');
+      
+      if (!shopDomain) {
+        errorDiv.textContent = 'Please enter your Shopify store domain';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+      
+      // Validate shop domain
+      if (!shopDomain.endsWith('.myshopify.com')) {
+        errorDiv.textContent = 'Please enter a valid Shopify store domain (e.g., your-shop.myshopify.com)';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+      
+      if (!clientId) {
+        errorDiv.textContent = 'No client ID found. Please contact support.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+      
+      errorDiv.classList.add('hidden');
+      connectBtn.disabled = true;
+      connectBtn.textContent = 'Connecting...';
+      
+      try {
+        // Call Firebase Function to initiate OAuth
+        const authUrl = `https://us-central1-breadcrumb-bd857.cloudfunctions.net/shopifyAuth?shop=${encodeURIComponent(shopDomain)}&clientId=${encodeURIComponent(clientId)}`;
+        
+        // Open OAuth in new window
+        const authWindow = window.open(authUrl, 'shopify-auth', 'width=600,height=700,scrollbars=yes,resizable=yes');
+        
+        // Monitor the auth window
+        const checkClosed = setInterval(() => {
+          if (authWindow.closed) {
+            clearInterval(checkClosed);
+            // Refresh connections after auth window closes
+            setTimeout(() => {
+              loadConnections();
+              loadSyncStatus();
+            }, 1000);
+          }
+        }, 1000);
+        
+        connectBtn.disabled = false;
+        connectBtn.textContent = '🔗 Connect Shopify Store';
+        
+        // Show success message
+        alert('Opening Shopify authorization... Please complete the process in the new window.');
+        
+      } catch (error) {
+        console.error('Connection error:', error);
+        errorDiv.textContent = 'Failed to connect: ' + error.message;
+        errorDiv.classList.remove('hidden');
+        connectBtn.disabled = false;
+        connectBtn.textContent = '🔗 Connect Shopify Store';
+      }
+    }
+    
+    // Check for OAuth callback parameters
+    function checkOAuthCallback() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const connected = urlParams.get('connected');
+      const shop = urlParams.get('shop');
+      const shopName = urlParams.get('shopName');
+      const error = urlParams.get('error');
+      
+      if (connected === 'success' && shop) {
+        alert(`✅ Successfully connected to ${shopName || shop}!\n\nOrders will now sync automatically in real-time.`);
+        // Refresh the page to show updated connections
+        window.location.href = window.location.pathname;
+      } else if (connected === 'error' && error) {
+        alert(`❌ Connection failed: ${error}`);
+        // Refresh the page
+        window.location.href = window.location.pathname;
+      }
+    }
+    
+    // Check for OAuth callback on page load
+    checkOAuthCallback();
+  </script>
+</body>
+</html>
+

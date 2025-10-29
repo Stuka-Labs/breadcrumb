@@ -1,0 +1,14 @@
+## Deployment Summary
+
+✅ Firebase Hosting (breadcrumb-shopify): Deployed successfully
+   URL: https://breadcrumb-shopify.web.app
+
+✅ Firebase Functions: Deployed successfully  
+   Function: remixApp
+   URL: https://remixapp-wgxs2bbz5q-uc.a.run.app
+
+❌ Shopify App: Deployment failed due to permissions
+   Error: No app with client ID 'd33eee832061804c3a22ad8c80e034bc' found
+   Current user: contact@stuka.xyz
+   Next steps: Please log out and login with the correct Shopify partners account
+

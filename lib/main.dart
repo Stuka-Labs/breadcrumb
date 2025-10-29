@@ -11,7 +11,6 @@ import 'screens/signup_screen.dart';
 import 'screens/signin_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/packer_screen.dart';
-import 'screens/packer_orders_screen.dart';
 import 'services/auth_service.dart';
 import 'views/user_management_view.dart';
 import 'constants/routes.dart';
@@ -61,7 +60,6 @@ import 'screens/wave_picks_screen.dart';
 import 'screens/warehouse_locations_screen.dart';
 import 'screens/scan_allocate_screen.dart';
 import 'screens/scan_order_screen.dart';
-import 'screens/packer_picking_screen.dart';
 import 'screens/client_bin_analytics_screen.dart';
 import 'constants/theme.dart';
 import 'screens/client_screen.dart';
@@ -181,7 +179,6 @@ class MyApp extends StatelessWidget {
         '/signin': (context) => const SignInScreen(),
         '/admin': (context) => const AdminScreen(),
         '/packer': (context) => const PackerScreen(),
-        '/packer-orders': (context) => const PackerOrdersScreen(),
         '/client': (context) => const ClientScreen(),
         userManagementRoute: (context) => UserManagementView(),
         '/new-sale-order': (context) => const NewSaleOrderScreen(),
@@ -230,7 +227,6 @@ class MyApp extends StatelessWidget {
         '/warehouse-locations': (context) => const WarehouseLocationsScreen(),
         '/scan-allocate': (context) => const ScanAllocateScreen(),
         '/scan-order': (context) => const ScanOrderScreen(),
-        '/packer-picking': (context) => const PackerPickingScreen(),
         '/client-bin-analytics': (context) => const ClientBinAnalyticsScreen(),
       },
     );
